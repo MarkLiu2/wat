@@ -7,15 +7,16 @@
 #define HEADER_SIZE 44
 
 typedef struct WavHeader{
+
         /* 4 bytes (0 - 4) */
-        char chunk_id[4];
+        char chunk_id[5];
         /* 4 bytes (4 - 8) */
         int chunk_size;
         /* 4 bytes (8 - 12) */
-        char format[4];
+        char format[5];
 
         /* 4 bytes (12 - 16) */
-        char subchunk1_id[4];
+        char subchunk1_id[5];
         /* 4 bytes (16 - 20) */
         int subchunk1_size;
         /* 2 bytes (20 - 22) */
@@ -32,14 +33,22 @@ typedef struct WavHeader{
         int bits_per_sample;
 
         /* 4 bytes (36 - 40) */
-        char subchunk2_id[4];
+        char subchunk2_id[5];
         /* 4 bytes (40 - 44) */
         int subchunk2_size;
 
 } WavHeader;
 
+typedef struct WavInput{
 
-extern WavHeader *wav_header;
+        WavHeader *wav_header;
+
+        long int file_size;
+        char * file_name;
+
+} WavInput;
+
+extern WavInput *wav_input;
 
 
 #endif
