@@ -72,7 +72,35 @@ int read_header_file(WavHeader * wh, char *file_name)
 
         free(buffer);
         return 1;
+}
 
+int read_wav_data(WavInput * wi)
+{
+        FILE *f;
+        int ret;
+        unsigned char * buffer;
+        long int data_size;
+
+        data_size = wi->file_size - HEADER_SIZE;
+
+        f = fopen(wi->file_name, "r");
+        if (f == NULL){
+                printf("File Error in read_wav_data");
+                return -1;
+        }
+
+        buffer = (unsigned char *) malloc( sizeof(unsigned char)* data_size);
+
+        fseek(f, 44, SEEK_SET);
+        fread(buffer, sizeof(unsigned char), data_size, f);
+
+        printf("\n\n\n DATA of WAV \n\n");
+        int i;
+        for(i = 0; i < 100; i++){
+                printf(" %f ", (float)buffer[i]);
+        }
+
+        return 1;
 }
 
 
@@ -106,6 +134,8 @@ int init(WavInput *wi)
 
 int main(int argc, char *argv[])
 {
+        int ret;
+
         wav_input = malloc(sizeof(WavInput));
 
        if(argc > 1){
@@ -116,7 +146,15 @@ int main(int argc, char *argv[])
                 exit(3);
         }
 
-        init(wav_input);
+        ret = init(wav_input);
+        if(ret < 0){
+                exit(4);
+        }
+
+        ret = read_wav_data(wav_input);
+        if(ret < 0){
+                exit(5);
+        }
 
         printf("\n\nend of program\n");
         return 1;
