@@ -1,5 +1,6 @@
 #include "wat.h"
 #include "string.h"
+#include <stdint.h>
 
 WavInput * wav_input = NULL;
 
@@ -78,7 +79,7 @@ int read_wav_data(WavInput * wi)
 {
         FILE *f;
         int ret;
-        unsigned char * buffer;
+        signed short * buffer;
         long int data_size;
 
         data_size = wi->file_size - HEADER_SIZE;
@@ -89,16 +90,40 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (unsigned char *) malloc( sizeof(unsigned char)* data_size);
+        buffer = (signed short *) malloc( sizeof(signed short)* data_size/2);
 
         fseek(f, 44, SEEK_SET);
-        fread(buffer, sizeof(unsigned char), data_size, f);
+        fread(buffer, sizeof(signed short), data_size/2, f);
 
         printf("\n\n\n DATA of WAV \n\n");
         int i;
-        for(i = 0; i < 100; i++){
-                printf(" %f ", (float)buffer[i]);
+        int max = data_size/2;
+        for(i = 0; i < max; i++){
+                printf(" %6.f ", (float)buffer[i] );
+                if(i % 15 == 0)
+                        printf("\n");
         }
+
+        /* short with range of -1 and 1 
+        short s;
+        for(i = 0; i < max; i += 4){
+                s = (buffer[i+1] << 8) | buffer[i];
+                printf(" %f ", s / 32768.0 );
+                if(i % 30 == 0)
+                        printf("\n");
+        }
+        */
+
+
+        /*
+                        printf("\n\n HEXA \n");
+        for(i = 0; i < max; i++){
+                printf(" %03X ", buffer[i]);
+                if(i % 30 == 0)
+                        printf("\n");
+        }
+        */
+
 
         return 1;
 }
@@ -117,7 +142,6 @@ int init(WavInput *wi)
 
         fseek(f, 0, SEEK_END);
         wi->file_size = ftell(f);
-
         fclose(f);
 
         printf("\n\nFile => %s", wi->file_name);
