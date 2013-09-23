@@ -78,10 +78,11 @@ int read_wav_data(WavInput * wi)
 {
         FILE *f;
         int ret;
-        unsigned char * buffer;
+        signed short * buffer;
         long int data_size;
 
         data_size = wi->file_size - HEADER_SIZE;
+        data_size = data_size / 2 + 1;
 
         f = fopen(wi->file_name, "r");
         if (f == NULL){
@@ -89,15 +90,17 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (unsigned char *) malloc( sizeof(unsigned char)* data_size);
+        buffer = (signed short *) malloc( sizeof(signed short)* data_size);
 
         fseek(f, 44, SEEK_SET);
-        fread(buffer, sizeof(unsigned char), data_size, f);
+        fread(buffer, sizeof(signed short), data_size, f);
 
         printf("\n\n\n DATA of WAV \n\n");
         int i;
-        for(i = 0; i < 100; i++){
-                printf(" %f ", (float)buffer[i]);
+        for(i = 0; i < data_size; i++){
+                printf(" %6.f ", (float)buffer[i]);
+                if(i % 15 == 0)
+                        printf("\n");
         }
 
         return 1;
