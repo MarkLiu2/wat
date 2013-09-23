@@ -78,7 +78,7 @@ int read_wav_data(WavInput * wi)
 {
         FILE *f;
         int ret;
-        signed short * buffer;
+        char * buffer;
         long int data_size;
 
         data_size = wi->file_size - HEADER_SIZE;
@@ -90,16 +90,19 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (signed short *) malloc( sizeof(signed short)* data_size);
+        buffer = (char *) malloc( sizeof(char)* data_size);
 
         fseek(f, 44, SEEK_SET);
-        fread(buffer, sizeof(signed short), data_size, f);
+        fread(buffer, sizeof(char), data_size, f);
 
         printf("\n\n\n DATA of WAV \n\n");
+        short s;
         int i;
-        for(i = 0; i < data_size; i++){
-                printf(" %6.f ", (float)buffer[i]);
-                if(i % 15 == 0)
+        for(i = HEADER_SIZE; i < data_size; i += 2){
+                s = (buffer[i+1] << 8) | buffer[i];
+                printf(" %+6f ", (double)s/32768.0);
+                
+                if(i % 13 == 0)
                         printf("\n");
         }
 
@@ -107,7 +110,7 @@ int read_wav_data(WavInput * wi)
 }
 
 
-int init(WavInput *wi)
+int init(WavInput *wi, int argc, char *argv[])
 {
         FILE *f;        
         int ret;
@@ -132,6 +135,11 @@ int init(WavInput *wi)
         if (ret < 0)
                 exit(0);
 
+        if(argc >= 3 && strcmp(argv[2], "-d") == 0){
+                ret = read_wav_data(wav_input);
+        }
+
+
         return ret;
 }
 
@@ -141,7 +149,7 @@ int main(int argc, char *argv[])
 
         wav_input = malloc(sizeof(WavInput));
 
-       if(argc > 1){
+        if(argc > 1){
                 wav_input->file_name = argv[1];
         }
         else{
@@ -149,14 +157,9 @@ int main(int argc, char *argv[])
                 exit(3);
         }
 
-        ret = init(wav_input);
+        ret = init(wav_input, argc, argv);
         if(ret < 0){
                 exit(4);
-        }
-
-        ret = read_wav_data(wav_input);
-        if(ret < 0){
-                exit(5);
         }
 
         printf("\n\nend of program\n");
