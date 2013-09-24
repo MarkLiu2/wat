@@ -1,5 +1,6 @@
 #include "wat.h"
 #include "string.h"
+#include <stdint.h>
 
 WavInput * wav_input = NULL;
 
@@ -137,7 +138,6 @@ int read_wav_data(WavInput * wi)
         }
         else if (wi->wav_header->num_channels == 1){
                 nb_samples = data_size / 2;
-
                 wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
                 wi->right_side = NULL;
         }
@@ -174,7 +174,6 @@ int init(WavInput *wi, int argc, char *argv[])
 
         fseek(f, 0, SEEK_END);
         wi->file_size = ftell(f);
-
         fclose(f);
 
         printf("\n\nFile => %s", wi->file_name);
