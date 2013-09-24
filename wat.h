@@ -35,7 +35,7 @@ typedef struct WavHeader{
         /* 4 bytes (36 - 40) */
         char subchunk2_id[5];
         /* 4 bytes (40 - 44) */
-        int subchunk2_size;
+        long int subchunk2_size;
 
 } WavHeader;
 
@@ -44,7 +44,11 @@ typedef struct WavInput{
         WavHeader *wav_header;
 
         long int file_size;
+        long int nb_samples;
         char * file_name;
+
+        double *left_side;
+        double *right_side;
 
 } WavInput;
 

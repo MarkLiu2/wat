@@ -68,10 +68,42 @@ int read_header_file(WavHeader * wh, char *file_name)
 
         printf("\n\nSubChunk 2:\n");
         printf("\nsubchunk2_id => %s", wh->subchunk2_id);
-        printf("\nsubchunk2_size => %d", wh->subchunk2_size);
+        printf("\nsubchunk2_size => %lu", wh->subchunk2_size);
 
         free(buffer);
         return 1;
+}
+
+int print_data(WavInput *wi)
+{
+        if(wi->left_side){
+                int i;
+                printf("\nLEFT SIDE\n\n");
+                for(i = 0; i < wi->nb_samples; i++){
+                        printf(" %+7f ", wi->left_side[i]);
+                        if(i % 11 == 0){
+                                printf("\n");
+                        }
+                }
+        }
+        if(wi->right_side){
+                int i;
+                printf("\nRIGHT SIDE\n\n");
+                for(i = 0; i < wi->nb_samples; i++){
+                        printf(" %+7f ", wi->right_side[i]);
+                        if(i % 11 == 0){
+                                printf("\n");
+                        }
+                }
+        }
+        return 1;
+}
+
+double bytes_to_double(char first, char second)
+{
+        short data;
+        data = (second << 8) | first;
+        return data / 32768.0;
 }
 
 int read_wav_data(WavInput * wi)
@@ -82,30 +114,49 @@ int read_wav_data(WavInput * wi)
         long int data_size;
 
         data_size = wi->file_size - HEADER_SIZE;
-        data_size = data_size / 2 + 1;
+        //data_size = data_size/2;
 
         f = fopen(wi->file_name, "r");
         if (f == NULL){
-                printf("File Error in read_wav_data");
+                printf("\nFile Error in read_wav_data\n");
                 return -1;
         }
 
         buffer = (char *) malloc( sizeof(char)* data_size);
 
-        fseek(f, 44, SEEK_SET);
+        fseek(f, HEADER_SIZE, SEEK_SET);
         fread(buffer, sizeof(char), data_size, f);
 
-        printf("\n\n\n DATA of WAV \n\n");
-        short s;
-        int i;
-        for(i = HEADER_SIZE; i < data_size; i += 2){
-                s = (buffer[i+1] << 8) | buffer[i];
-                printf(" %+6f ", (double)s/32768.0);
-                
-                if(i % 13 == 0)
-                        printf("\n");
-        }
+        long int nb_samples;
 
+        if(wi->wav_header->num_channels == 2){
+                nb_samples = data_size / 4;
+
+                wi->right_side = (double *)malloc(sizeof(double) * nb_samples);
+                wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
+        }
+        else if (wi->wav_header->num_channels == 1){
+                nb_samples = data_size / 2;
+
+                wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
+                wi->right_side = NULL;
+        }
+        else {
+                return -3;
+        }
+        wi->nb_samples = nb_samples;
+
+        long int i = 0;
+        long int it = 0;
+        while(it < data_size){
+                wi->left_side[i] = bytes_to_double(buffer[it], buffer[it+1]);
+                it += 2;
+                if(wi->wav_header->num_channels == 2){
+                        wi->right_side[i] = bytes_to_double(buffer[i*4+2], buffer[i*4+3]);
+                        it += 2;
+                }
+                i++;
+        }
         return 1;
 }
 
@@ -117,7 +168,7 @@ int init(WavInput *wi, int argc, char *argv[])
 
         f = fopen(wi->file_name, "r");
         if(f == NULL){
-                printf("\nFile Error in init");
+                printf("\nFile Error in init\n");
                 exit(1);
         }
 
@@ -135,10 +186,11 @@ int init(WavInput *wi, int argc, char *argv[])
         if (ret < 0)
                 exit(0);
 
-        if(argc >= 3 && strcmp(argv[2], "-d") == 0){
-                ret = read_wav_data(wav_input);
-        }
+        ret = read_wav_data(wav_input);
 
+        if(argc >= 3 && strcmp(argv[2], "-d") == 0){
+                ret = print_data(wav_input);
+        }
 
         return ret;
 }
@@ -147,7 +199,7 @@ int main(int argc, char *argv[])
 {
         int ret;
 
-        wav_input = malloc(sizeof(WavInput));
+        wav_input = (WavInput *)malloc(sizeof(WavInput));
 
         if(argc > 1){
                 wav_input->file_name = argv[1];
