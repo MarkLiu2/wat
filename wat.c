@@ -14,21 +14,23 @@ int read_header_file(WavHeader * wh, char *file_name)
 
         f = fopen(file_name, "r");
         if(f == NULL){
-                printf("\nFile Error in read header");
+                wat_log(LOG_INFO, "\nFile Error");
+                wat_log(LOG_ERROR, " in read_header_file");
+                return -1;
         }
 
         buffer = (unsigned char *)malloc(sizeof(unsigned char *) * HEADER_SIZE);
+
         if(buffer == NULL){
-                printf("\nMemory Error");
+                wat_log(LOG_ERROR, "\nMemory Error in read_header_file");
                 return -1;
         }
 
         ret = fread(buffer, sizeof(unsigned char *), HEADER_SIZE, f);
-
         fclose(f);
 
         if(ret < HEADER_SIZE){
-                printf("\nSomething got wrong with fread");
+                wat_log(LOG_ERROR, "\nSomething got wrong with fread");
                 return -1;
         }
 
@@ -53,6 +55,8 @@ int read_header_file(WavHeader * wh, char *file_name)
         wh->subchunk2_id[4] = '\0';
         memcpy(&wh->subchunk2_size, buffer + 40, 4);
 
+        wat_log(LOG_PANIC, "\nRead all header infos, printing than now.");
+
         /* print header infos */
         printf("\n\nHeader of wav file:\n");
         printf("\nchunk_id => %s", wh->chunk_id);
@@ -74,11 +78,13 @@ int read_header_file(WavHeader * wh, char *file_name)
         printf("\nsubchunk2_size => %lu", wh->subchunk2_size);
 
         free(buffer);
+        wat_log(LOG_PANIC, "\nHeader printed.");
         return 1;
 }
 
 int print_wav_data(WavInput *wi)
 {
+        wat_log(LOG_PANIC, "\nPrinting all data");
         if(wi->left_side){
                 int i;
                 printf("\nLEFT SIDE\n\n");
@@ -99,6 +105,7 @@ int print_wav_data(WavInput *wi)
                         }
                 }
         }
+        wat_log(LOG_PANIC, "\n\nAll data printed");
         return 1;
 }
 
@@ -121,7 +128,8 @@ int read_wav_data(WavInput * wi)
 
         f = fopen(wi->file_name, "r");
         if (f == NULL){
-                printf("\nFile Error in read_wav_data\n");
+                wat_log(LOG_INFO, "\nFile Error");
+                wat_log(LOG_ERROR, " in read_wav_data");
                 return -1;
         }
 
@@ -235,7 +243,7 @@ int main(int argc, char **argv)
                 wav_input->file_name = argv[1];
         }
         else{
-                printf("\nArgument is required\n\n");
+                wat_log(LOG_INFO, "\nArgument is required\n\n");
                 exit(3);
         }
 
@@ -258,6 +266,6 @@ int main(int argc, char **argv)
                 exit(4);
         }
 
-        printf("\n\nend of program\n");
+        printf("\n\nend\n");
         return 1;
 }
