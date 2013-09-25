@@ -4,6 +4,8 @@
 
 WavInput * wav_input = NULL;
 
+static int print_data = 0; 
+
 int read_header_file(WavHeader * wh, char *file_name)
 {
         FILE *f;        
@@ -15,7 +17,7 @@ int read_header_file(WavHeader * wh, char *file_name)
                 printf("\nFile Error in read header");
         }
 
-        buffer = (unsigned char *) malloc(sizeof(unsigned char *) * HEADER_SIZE);
+        buffer = (unsigned char *)malloc(sizeof(unsigned char *) * HEADER_SIZE);
         if(buffer == NULL){
                 printf("\nMemory Error");
                 return -1;
@@ -75,7 +77,7 @@ int read_header_file(WavHeader * wh, char *file_name)
         return 1;
 }
 
-int print_data(WavInput *wi)
+int print_wav_data(WavInput *wi)
 {
         if(wi->left_side){
                 int i;
@@ -152,14 +154,43 @@ int read_wav_data(WavInput * wi)
                 wi->left_side[i] = bytes_to_double(buffer[it], buffer[it+1]);
                 it += 2;
                 if(wi->wav_header->num_channels == 2){
-                        wi->right_side[i] = bytes_to_double(buffer[i*4+2], buffer[i*4+3]);
+                        wi->right_side[i] = bytes_to_double(buffer[i * 4 + 2], 
+                                        buffer[i * 4 + 3]);
                         it += 2;
                 }
                 i++;
         }
-        return 1;
+        if(print_data)
+                ret = print_wav_data(wav_input);
+
+        return ret;
 }
 
+int parse_args(char *argv)
+{
+        int ret = 1;
+
+        if(strcmp(argv, "-d") == 0){
+                print_data = 1;
+        }
+        else if(strcmp(argv, "-log_level=INFO") == 0){
+                set_log_level(LOG_ERROR);
+        }
+        else if(strcmp(argv, "-log_level=ERROR") == 0){
+                set_log_level(LOG_ERROR);
+        }
+        else if(strcmp(argv, "-log_level=PANIC") == 0){
+                set_log_level(LOG_PANIC);
+        }
+        else{
+                char msg[60];
+                sprintf(msg, "\nParametro \"%s\" nao encontrado\n", argv);
+                wat_log(LOG_INFO, msg);
+                ret = -1;
+        }
+
+        return ret;
+}
 
 int init(WavInput *wi, int argc, char *argv[])
 {
@@ -168,7 +199,8 @@ int init(WavInput *wi, int argc, char *argv[])
 
         f = fopen(wi->file_name, "r");
         if(f == NULL){
-                printf("\nFile Error in init\n");
+                wat_log(LOG_INFO,"\nErro ao abrir o arquivo\n");
+                wat_log(LOG_ERROR," em init\n");
                 exit(1);
         }
 
@@ -179,22 +211,21 @@ int init(WavInput *wi, int argc, char *argv[])
         printf("\n\nFile => %s", wi->file_name);
         printf("\nSize => %lu bytes", wi->file_size);
 
-        wav_input->wav_header = malloc(sizeof(WavHeader));
-        ret = read_header_file(wav_input->wav_header, wav_input->file_name);
+        wat_log(LOG_PANIC, "\nLeu arquivo\n");
 
-        if (ret < 0)
-                exit(0);
-
-        ret = read_wav_data(wav_input);
-
-        if(argc >= 3 && strcmp(argv[2], "-d") == 0){
-                ret = print_data(wav_input);
+        int i;
+        for(i = 2; i < argc; i++){
+                ret = parse_args(argv[i]);
+                if(ret < 1)
+                        break;
         }
+
+        wat_log(LOG_PANIC, "\nFim do parser dos argumentos\n");
 
         return ret;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
         int ret;
 
@@ -209,6 +240,20 @@ int main(int argc, char *argv[])
         }
 
         ret = init(wav_input, argc, argv);
+
+        if(ret < 0){
+                exit(4);
+        }
+
+        wav_input->wav_header = malloc(sizeof(WavHeader));
+        ret = read_header_file(wav_input->wav_header, wav_input->file_name);
+
+        if (ret < 0)
+                exit(0);
+
+
+        ret = read_wav_data(wav_input);
+
         if(ret < 0){
                 exit(4);
         }

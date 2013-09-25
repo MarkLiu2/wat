@@ -3,14 +3,15 @@ MAIN=wat
 WAV_FILE=delicia.wav
 GDB=gdb
 GDB_FLAG=-g
+LOG=log
 
 .PHONY:$(PROGRAM)
 
-$(PROGRAM): $(MAIN).c
-	cc -o $(PROGRAM) $(MAIN).c
+$(PROGRAM): $(MAIN).c $(LOG).c
+	cc -o $(PROGRAM) $(MAIN).c $(LOG).c
 
 $(GDB): $(MAIN.c)
-	cc -o $(PROGRAM) $(MAIN).c $(GDB_FLAG)
+	cc -o $(PROGRAM) $(MAIN).c $(LOG).c $(GDB_FLAG)
 
 run:
 	-./$(PROGRAM) $(ARG)

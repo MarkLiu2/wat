@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "log.h"
 
 #define HEADER_SIZE 44
 
