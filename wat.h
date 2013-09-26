@@ -51,6 +51,9 @@ typedef struct WavInput{
         double *left_side;
         double *right_side;
 
+        double *real_data;
+        double *imag_data;
+
 } WavInput;
 
 extern WavInput *wav_input;

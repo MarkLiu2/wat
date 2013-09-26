@@ -1,10 +1,13 @@
 #include "wat.h"
 #include "string.h"
 #include <stdint.h>
+#include "dft.h"
 
 WavInput * wav_input = NULL;
 
 static int print_data = 0; 
+static int run_dft = 0;
+static int run_idft = 0;
 
 int read_header_file(WavHeader * wh, char *file_name)
 {
@@ -85,7 +88,17 @@ int read_header_file(WavHeader * wh, char *file_name)
 int print_wav_data(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nPrinting all data");
-        if(wi->left_side){
+        if(wi->real_data){
+                int i;
+                printf("\nLEFT SIDE\n\n");
+                for(i = 0; i < wi->nb_samples; i++){
+                        printf(" %+7f ", wi->real_data[i]);
+                        if(i % 11 == 0){
+                                printf("\n");
+                        }
+                }
+        }
+         if(wi->left_side){
                 int i;
                 printf("\nLEFT SIDE\n\n");
                 for(i = 0; i < wi->nb_samples; i++){
@@ -119,7 +132,7 @@ double bytes_to_double(char first, char second)
 int read_wav_data(WavInput * wi)
 {
         FILE *f;
-        int ret;
+        int ret = 1;
         char * buffer;
         long int data_size;
 
@@ -141,17 +154,24 @@ int read_wav_data(WavInput * wi)
         long int nb_samples;
 
         if(wi->wav_header->num_channels == 2){
-                nb_samples = data_size / 4;
+                wat_log(LOG_INFO, "\nWav with 2 channels.");
+                nb_samples = data_size / 2;
 
-                wi->right_side = (double *)malloc(sizeof(double) * nb_samples);
-                wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
+                wi->real_data = (double *)malloc(sizeof(double) * nb_samples);
+                wi->imag_data = (double *)malloc(sizeof(double) * nb_samples);
+                //wi->right_side = (double *)malloc(sizeof(double) * nb_samples);
+                //wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
         }
         else if (wi->wav_header->num_channels == 1){
+                wat_log(LOG_INFO, "\nWav with 1 channel.");
                 nb_samples = data_size / 2;
-                wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
-                wi->right_side = NULL;
+                //wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
+                //wi->right_side = NULL;
+                wi->real_data = (double *)malloc(sizeof(double) * nb_samples);
+                wi->imag_data = (double *)malloc(sizeof(double) * nb_samples);
         }
         else {
+                wat_log(LOG_INFO, "\nNumber of channels invalid.");
                 return -3;
         }
         wi->nb_samples = nb_samples;
@@ -159,17 +179,21 @@ int read_wav_data(WavInput * wi)
         long int i = 0;
         long int it = 0;
         while(it < data_size){
-                wi->left_side[i] = bytes_to_double(buffer[it], buffer[it+1]);
+        //        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it+1]);
+                wi->real_data[i] = bytes_to_double(buffer[it], buffer[it+1]);
+                wi->imag_data[i] = 0;
                 it += 2;
+                /*
                 if(wi->wav_header->num_channels == 2){
                         wi->right_side[i] = bytes_to_double(buffer[i * 4 + 2], 
                                         buffer[i * 4 + 3]);
                         it += 2;
                 }
+                */
                 i++;
         }
         if(print_data)
-                ret = print_wav_data(wav_input);
+                ret = print_wav_data(wi);
 
         return ret;
 }
@@ -190,7 +214,13 @@ int parse_args(char *argv)
         else if(strcmp(argv, "-log_level=PANIC") == 0){
                 set_log_level(LOG_PANIC);
         }
-        else{
+        else if(strcmp(argv, "-dft") == 0){
+                run_dft = 1;
+        }
+        else if(strcmp(argv, "-idft") == 0){
+                run_idft = 1;
+        }
+         else{
                 char msg[60];
                 sprintf(msg, "\nParametro \"%s\" nao encontrado\n", argv);
                 wat_log(LOG_INFO, msg);
@@ -261,6 +291,31 @@ int main(int argc, char **argv)
 
 
         ret = read_wav_data(wav_input);
+
+        if(run_dft)
+                ret = dft(wav_input->nb_samples, wav_input->real_data, wav_input->imag_data);
+
+        if(ret < 0){
+                exit(4);
+        }
+
+        if(print_data)
+                ret = print_wav_data(wav_input);
+
+        if(ret < 0){
+                exit(4);
+        }
+
+
+        if(run_idft)
+                ret = inverse_dft(wav_input->nb_samples, wav_input->real_data, wav_input->imag_data);
+
+        if(ret < 0){
+                exit(4);
+        }
+
+        if(print_data && run_idft)
+                ret = print_wav_data(wav_input);
 
         if(ret < 0){
                 exit(4);
