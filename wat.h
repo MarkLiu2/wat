@@ -21,24 +21,35 @@ typedef struct WavHeader{
         /* 4 bytes (16 - 20) */
         int subchunk1_size;
         /* 2 bytes (20 - 22) */
-        int audio_format;
+        short int audio_format;
         /* 2 bytes (22 - 24) */
-        int num_channels;
+        short int num_channels;
         /* 4 bytes (24 - 28) */
         int sample_rate;
         /* 4 bytes (28 - 32) */
         int byte_rate;
         /* 2 bytes (32 - 34) */
-        int block_align;
+        short int block_align;
         /* 2 bytes (34 - 36) */
-        int bits_per_sample;
+        short int bits_per_sample;
 
         /* 4 bytes (36 - 40) */
         char subchunk2_id[5];
         /* 4 bytes (40 - 44) */
-        long int subchunk2_size;
+        int subchunk2_size;
 
 } WavHeader;
+
+typedef struct Arguments{
+
+        int print_data;
+        int dft;
+        int idft;
+        int print_help;
+        int has_input;
+        int has_output;
+} Arguments;
+
 
 typedef struct WavInput{
 
@@ -46,13 +57,19 @@ typedef struct WavInput{
 
         long int file_size;
         long int nb_samples;
+
         char * file_name;
+        char * output_file;
 
         double *left_side;
         double *right_side;
 
-        double *real_data;
-        double *imag_data;
+        short *short_left;
+        short *short_right;
+
+        double *zero_data;
+
+        Arguments *wat_args;
 
 } WavInput;
 

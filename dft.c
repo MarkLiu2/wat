@@ -9,7 +9,7 @@
 int dft(long int length, double real_sample[], double imag_sample[])
 {
 
-        wat_log(LOG_INFO, "\nDFT function");
+        wat_log(LOG_INFO, "\nDFT function.\n\n");
         long int i, j;
         double arg;
         double cosarg,sinarg;
@@ -21,7 +21,7 @@ int dft(long int length, double real_sample[], double imag_sample[])
         temp_imag = calloc(length, sizeof(double));
         if (temp_real == NULL || temp_imag == NULL)
         {
-                wat_log(LOG_INFO, "Null data in dft function");
+                wat_log(LOG_INFO, "Null data in dft function.");
                 return(-1);
         }
 
@@ -43,6 +43,7 @@ int dft(long int length, double real_sample[], double imag_sample[])
                 }
         }
 
+        wat_log(LOG_PANIC, "\n\nEnd of dft \n\n");
         /* Copy the data back */
         for (i=0; i<length; i+=1) 
         {
@@ -64,7 +65,7 @@ int dft(long int length, double real_sample[], double imag_sample[])
 
 int inverse_dft(long int length, double real_sample[], double imag_sample[])
 {
-        wat_log(LOG_INFO, "\nInverse DFT function.");
+        wat_log(LOG_INFO, "\nInverse DFT function.\n\n");
         long int i, j;
         double arg;
         double cosarg,sinarg;
@@ -98,11 +99,12 @@ int inverse_dft(long int length, double real_sample[], double imag_sample[])
                 }
         }
 
+        wat_log(LOG_PANIC, "\n\nEnd of idft \n\n");
         /* Copy the data back */
         for (i=0; i<length; i+=1) 
         {
                 if(i % 1001 == 0)
-                        wat_log(LOG_PANIC, "\nIDFT Copying data");
+                        wat_log(LOG_PANIC, "\nI;DFT Copying data");
                 real_sample[i] = temp_real[i] / (double)length;
                 imag_sample[i] = temp_imag[i] / (double)length;
         }
