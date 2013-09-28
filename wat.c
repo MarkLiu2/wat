@@ -101,6 +101,20 @@ int read_header_file(WavHeader * wh, char *file_name)
         return 1;
 }
 
+int print_hexa_data(WavInput *wi, unsigned char *buffer)
+{
+        wat_log(LOG_PANIC, "\n\nPrinting hexa data.");
+        int i;
+        for(i = 0; i < wi->wav_header->subchunk2_size; i++){
+                printf(" %.2X ", buffer[i]);
+                if(i % 10 == 0)
+                        printf("\n");
+        }
+        wat_log(LOG_PANIC, "\n\nPrinting hexa data DONE.");
+
+        return 1;
+}
+
 int print_wav_data(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\n\nPrinting all data");
@@ -140,7 +154,7 @@ int read_wav_data(WavInput * wi)
         wat_log(LOG_PANIC, "\nIn read_wav_data\n");
         FILE *f;
         int ret = 1;
-        char * buffer;
+        unsigned char * buffer;
         long int data_size;
 
         data_size = wi->file_size - HEADER_SIZE;
@@ -153,10 +167,15 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (char *) malloc( sizeof(char)* data_size);
+        buffer = (unsigned char *) malloc(sizeof(unsigned char) * data_size);
 
         fseek(f, HEADER_SIZE, SEEK_SET);
-        fread(buffer, sizeof(char), data_size, f);
+        fread(buffer, sizeof(unsigned char), data_size, f);
+
+        if(wi->wat_args->print_hexa_data){
+                wat_log(LOG_PANIC, "\nprint_hexa_data");
+                print_hexa_data(wi, buffer);
+        }
 
         long int nb_samples;
 
@@ -214,6 +233,9 @@ int parse_args(Arguments *wa, char *argv)
         else if(strcmp(argv, "-h") == 0){
                 help();
                 exit(1);
+        }
+        else if(strcmp(argv, "-x") == 0){
+                wa->print_hexa_data = 1;
         }
         else if(strcmp(argv, "-i") == 0){
                 wa->has_input = 1;
@@ -280,7 +302,9 @@ int init(WavInput *wi, int argc, char *argv[])
 
         f = fopen(wi->file_name, "r");
         if(f == NULL){
-                wat_log(LOG_INFO,"\nError while openning input file");
+                char * msg = malloc(64 * sizeof(char));
+                sprintf(msg, "\nError while openning input file: \"%s\" \n", wi->file_name);
+                wat_log(LOG_INFO, msg);
                 wat_log(LOG_ERROR," in init\n");
                 exit(1);
         }

@@ -48,6 +48,7 @@ typedef struct Arguments{
         int print_help;
         int has_input;
         int has_output;
+        int print_hexa_data;
 } Arguments;
 
 
