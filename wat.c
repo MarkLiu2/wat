@@ -463,6 +463,11 @@ int main(int argc, char **argv)
         if(wav_input->wat_args->has_output)
                 save_file(wav_input);
 
+
+        free(wav_input->wat_args);
+        free(wav_input->wav_header);
+        free(wav_input);
+
         printf("\n\nend\n");
         return 1;
 }
