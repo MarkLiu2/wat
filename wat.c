@@ -154,7 +154,7 @@ int read_wav_data(WavInput * wi)
         wat_log(LOG_PANIC, "\nIn read_wav_data\n");
         FILE *f;
         int ret = 1;
-        unsigned char * buffer;
+        short * buffer;
         long int data_size;
 
         data_size = wi->file_size - HEADER_SIZE;
@@ -167,14 +167,14 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (unsigned char *) malloc(sizeof(unsigned char) * data_size);
+        buffer = (short *) malloc(sizeof(short) * data_size);
 
         fseek(f, HEADER_SIZE, SEEK_SET);
-        fread(buffer, sizeof(unsigned char), data_size, f);
+        fread(buffer, sizeof(short), data_size, f);
 
         if(wi->wat_args->print_hexa_data){
                 wat_log(LOG_PANIC, "\nprint_hexa_data");
-                print_hexa_data(wi, buffer);
+//                print_hexa_data(wi, buffer);
         }
 
         long int nb_samples;
@@ -204,12 +204,12 @@ int read_wav_data(WavInput * wi)
         long int i = 0;
         long int it = 0;
         while(it < data_size){
-                wi->left_side[i] = bytes_to_double(buffer[it], buffer[it+1]);
+                wi->left_side[i] = (double)buffer[i];//bytes_to_double(buffer[it], buffer[it+1]);
                 wi->zero_data[i] = 0;
                 it += 2;
                 if(wi->wav_header->num_channels == 2){
-                        wi->right_side[i] = bytes_to_double(buffer[i * 4 + 2], 
-                                        buffer[i * 4 + 3]);
+                        wi->right_side[i] =  (double)buffer[i];//bbytes_to_double(buffer[i * 4 + 2], 
+//                                        buffer[i * 4 + 3]);
                         it += 2;
                 }
                 i++;
