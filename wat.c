@@ -13,7 +13,8 @@ void help()
         printf("\n\t-h                   Help.");
         printf("\n\t-i <imput file>      Imput file.");
         printf("\n\t-o <output file>     Imput file.");
-        printf("\n\t-d                   Print data of input file after and before dft.");
+        printf("\n\t-d                   Print data of input file after and"
+                        " before dft.");
         printf("\n\t-dft                 Run DFT in input file.");
         printf("\n\t-idft                Run IDFT in input file.");
         printf("\n\t-log_level=<level>   Define the level of logging, can be"
@@ -142,13 +143,6 @@ int print_wav_data(WavInput *wi)
         return 1;
 }
 
-double bytes_to_double(char first, char second)
-{
-        short data;
-        data = (second << 8) | first;
-        return data;// / 32768.0;
-}
-
 int read_wav_data(WavInput * wi)
 {
         wat_log(LOG_PANIC, "\nIn read_wav_data\n");
@@ -204,17 +198,17 @@ int read_wav_data(WavInput * wi)
         long int i = 0;
         long int it = 0;
         while(it < data_size){
-                wi->left_side[i] = (double)buffer[i];//bytes_to_double(buffer[it], buffer[it+1]);
+                wi->left_side[i] = (double)buffer[i];
                 wi->zero_data[i] = 0;
                 it += 2;
                 if(wi->wav_header->num_channels == 2){
-                        wi->right_side[i] =  (double)buffer[i];//bbytes_to_double(buffer[i * 4 + 2], 
-//                                        buffer[i * 4 + 3]);
+                        wi->right_side[i] = (double)buffer[i];
                         it += 2;
                 }
                 i++;
         }
 
+        free(buffer);
 
         char msg[50];
         sprintf(msg, "\n read_wav_data DONE, ret = %d", ret);
