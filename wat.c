@@ -173,7 +173,6 @@ int read_wav_data(WavInput * wi)
 
                 wi->right_side = (double *)malloc(sizeof(double) * wi->nb_samples);
                 wi->left_side = (double *)malloc(sizeof(double) * wi->nb_samples);
-                wi->zero_data = (double *)malloc(sizeof(double) * wi->nb_samples);
         }
         else if (wi->wav_header->num_channels == 1){
                 wat_log(LOG_INFO, "\nWav with 1 channel.");
@@ -181,7 +180,6 @@ int read_wav_data(WavInput * wi)
 
                 wi->left_side = (double *)malloc(sizeof(double) * wi->nb_samples);
                 wi->right_side = NULL;
-                wi->zero_data = (double *)malloc(sizeof(double) * wi->nb_samples);
         }
         else {
                 wat_log(LOG_INFO, "\nNumber of channels invalid.");
@@ -198,7 +196,6 @@ int read_wav_data(WavInput * wi)
         while(it < wi->nb_samples){
                 //wi->left_side[i] = (double)buffer[it] / 32768.0;
                 wi->left_side[i] = (double)buffer[it];
-                wi->zero_data[i] = 0;
                 it++;
                 if(wi->wav_header->num_channels == 2){
                         //wi->right_side[i] = (double)buffer[it] / 32768.0;
@@ -436,11 +433,9 @@ int main(int argc, char **argv)
         ret = read_wav_data(wav_input);
 
         if(wav_input->wat_args->dft){
-                ret = dft(wav_input->nb_samples, wav_input->left_side, 
-                                wav_input->zero_data);
+                ret = dft(wav_input->nb_samples, wav_input->left_side);
                 if(wav_input->wav_header->num_channels == 2){
-                        ret = dft(wav_input->nb_samples, wav_input->right_side, 
-                                        wav_input->zero_data);
+                        ret = dft(wav_input->nb_samples, wav_input->right_side);
                 }
         }
 
@@ -457,11 +452,9 @@ int main(int argc, char **argv)
 
 
         if(wav_input->wat_args->idft){
-                ret = inverse_dft(wav_input->nb_samples, wav_input->left_side, 
-                                wav_input->zero_data);
+                ret = inverse_dft(wav_input->nb_samples, wav_input->left_side);
                 if(wav_input->wav_header->num_channels == 2){
-                        ret = inverse_dft(wav_input->nb_samples, wav_input->right_side, 
-                                        wav_input->zero_data);
+                        ret = inverse_dft(wav_input->nb_samples, wav_input->right_side);
                 }
         }
 

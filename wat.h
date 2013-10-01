@@ -68,8 +68,6 @@ typedef struct WavInput{
         short *short_left;
         short *short_right;
 
-        double *zero_data;
-
         Arguments *wat_args;
 
 } WavInput;

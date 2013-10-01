@@ -3,8 +3,8 @@
 
 #include "log.h"
 
-int dft(long int, double *, double *);
+int dft(long int, double *);
 
 
-int inverse_dft(long int, double *, double *);
+int inverse_dft(long int, double *);
 #endif
