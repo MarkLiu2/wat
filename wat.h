@@ -56,8 +56,8 @@ typedef struct WavInput{
 
         WavHeader *wav_header;
 
-        long int file_size;
-        long int nb_samples;
+        int file_size;
+        int nb_samples;
 
         char * file_name;
         char * output_file;

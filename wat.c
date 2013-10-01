@@ -149,10 +149,6 @@ int read_wav_data(WavInput * wi)
         FILE *f;
         int ret = 1;
         short * buffer;
-        long int data_size;
-
-        data_size = wi->file_size - HEADER_SIZE;
-        //data_size = data_size/2;
 
         f = fopen(wi->file_name, "r");
         if (f == NULL){
@@ -161,49 +157,53 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (short *) malloc(sizeof(short) * data_size);
+        buffer = (short *) malloc(sizeof(short) * (wi->wav_header->subchunk2_size >> 1));
 
         fseek(f, HEADER_SIZE, SEEK_SET);
-        fread(buffer, sizeof(short), data_size, f);
+        fread(buffer, sizeof(short), (wi->wav_header->subchunk2_size >> 1), f);
 
         if(wi->wat_args->print_hexa_data){
                 wat_log(LOG_PANIC, "\nprint_hexa_data");
 //                print_hexa_data(wi, buffer);
         }
 
-        long int nb_samples;
-
         if(wi->wav_header->num_channels == 2){
                 wat_log(LOG_INFO, "\nWav with 2 channels.");
-                nb_samples = data_size / 4;
+                wi->nb_samples = wi->wav_header->subchunk2_size >> 2;
 
-                wi->right_side = (double *)malloc(sizeof(double) * nb_samples);
-                wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
-                wi->zero_data = (double *)malloc(sizeof(double) * nb_samples);
+                wi->right_side = (double *)malloc(sizeof(double) * wi->nb_samples);
+                wi->left_side = (double *)malloc(sizeof(double) * wi->nb_samples);
+                wi->zero_data = (double *)malloc(sizeof(double) * wi->nb_samples);
         }
         else if (wi->wav_header->num_channels == 1){
                 wat_log(LOG_INFO, "\nWav with 1 channel.");
-                nb_samples = data_size / 2;
+                wi->nb_samples = wi->wav_header->subchunk2_size >> 1;
 
-                wi->left_side = (double *)malloc(sizeof(double) * nb_samples);
+                wi->left_side = (double *)malloc(sizeof(double) * wi->nb_samples);
                 wi->right_side = NULL;
-                wi->zero_data = (double *)malloc(sizeof(double) * nb_samples);
+                wi->zero_data = (double *)malloc(sizeof(double) * wi->nb_samples);
         }
         else {
                 wat_log(LOG_INFO, "\nNumber of channels invalid.");
                 return -3;
         }
-        wi->nb_samples = nb_samples;
+        printf("\nnb_samples = %d", wi->nb_samples);
 
+        wat_log(LOG_PANIC, "\nGoing to copy the data");
         long int i = 0;
         long int it = 0;
-        while(it < data_size){
-                wi->left_side[i] = (double)buffer[i];
+        if(wi->wav_header->num_channels == 2){
+                wi->nb_samples = wi->nb_samples << 1;
+        }
+        while(it < wi->nb_samples){
+                //wi->left_side[i] = (double)buffer[it] / 32768.0;
+                wi->left_side[i] = (double)buffer[it];
                 wi->zero_data[i] = 0;
-                it += 2;
+                it++;
                 if(wi->wav_header->num_channels == 2){
-                        wi->right_side[i] = (double)buffer[i];
-                        it += 2;
+                        //wi->right_side[i] = (double)buffer[it] / 32768.0;
+                        wi->right_side[i] = (double)buffer[it];
+                        it++;
                 }
                 i++;
         }
@@ -308,7 +308,7 @@ int init(WavInput *wi, int argc, char *argv[])
         fclose(f);
 
         printf("\n\nFile => %s", wi->file_name);
-        printf("\nSize => %lu bytes", wi->file_size);
+        printf("\nSize => %d bytes", wi->file_size);
 
         wat_log(LOG_PANIC, "\nRead file DONE\n");
 
@@ -379,16 +379,20 @@ int save_file(WavInput *wi)
         convert_double_to_short(wi);
 
         int i;
+        if(wh->num_channels == 2){
+                char * msg = malloc(64 * sizeof(char));
+                sprintf(msg, "\nSaving data as 2 channels, "
+                                "with nb_samples %d in with side", wi->nb_samples);
+                wat_log(LOG_PANIC, msg);         
+        }
         for(i = 0; i < wi->nb_samples; i++){
                 fwrite(&wi->short_left[i], sizeof(short int), 1, f);
-                if(wh->num_channels == 2)
+                if(wh->num_channels == 2){
                         fwrite(&wi->short_right[i], sizeof(short int), 1, f);
+                }
         }
-
         fclose(f);
-
         wat_log(LOG_PANIC, "\nsave_file DONE");
-
         return 1;        
 }
 
@@ -411,6 +415,19 @@ int main(int argc, char **argv)
 
         wav_input->wav_header = (WavHeader *)malloc(sizeof(WavHeader));
         ret = read_header_file(wav_input->wav_header, wav_input->file_name);
+
+        /* getting the duration of audio */
+        int sample_rate = wav_input->wav_header->subchunk2_size / wav_input->wav_header->sample_rate;
+        if(wav_input->wav_header->num_channels == 1){
+                char * msg = malloc(64 * sizeof(char)); 
+                sprintf(msg, "\n\nDuration => %d seconds\n", sample_rate);
+                wat_log(LOG_INFO, msg);
+        }
+        else if(wav_input->wav_header->num_channels == 2){
+                char * msg = malloc(64 * sizeof(char)); 
+                sprintf(msg, "\n\nDuration => %d seconds\n", sample_rate >> 1);
+                wat_log(LOG_INFO, msg);
+        }
 
         if (ret < 0)
                 exit(0);
