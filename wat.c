@@ -339,6 +339,51 @@ int init(WavInput *wi, int argc, char *argv[])
         return ret;
 }
 
+int convert_double_to_short3(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nConverting double to short");
+
+        if(wi->wav_header->num_channels == 2){
+                wi->short_left = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+                wi->short_right = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+        }
+        else {
+                wi->short_left = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+       }
+
+        wi->buffer = (unsigned char *)malloc(sizeof(unsigned char) 
+                        * wi->nb_samples * 2);
+
+        int i;
+        for(i = 0; i < wi->nb_samples; i++){
+                wi->short_left[i] = (short int)wi->left_side[i];
+                if(wi->wav_header->num_channels == 2){
+                        wi->short_right[i] = (short int)wi->right_side[i];
+                }
+        }
+
+        if(wi->wav_header->num_channels == 2){
+
+        }
+
+        int iterator = wi->wav_header->num_channels * 2;
+        int count = 0;
+        for(i = 0; i < wi->nb_samples * iterator; i += iterator){
+                memcpy(&wi->buffer[i], &wi->short_left[count], 2);
+                if(wi->wav_header->num_channels == 2){
+                        memcpy(&wi->buffer[i + 2], &wi->short_right[count], 2);
+                }
+                count++;
+        }
+        wat_log(LOG_PANIC, "\nConverted double to short");
+
+        return 1;
+}
+
+
 int convert_double_to_short(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nConverting double to short");
@@ -365,8 +410,9 @@ int convert_double_to_short(WavInput *wi)
                 }
         }
 
-        wi->buffer[0] = (wi->short_left[0] & 0xff);
-        wi->buffer[1] = ((wi->short_left[0] >> 8) & 0xff);
+        wi->buffer[0] = (wi->short_left[0] & 255);
+        //wi->buffer[1] = ((wi->short_left[0] >> 8) & 255);
+        wi->buffer[1] = ((wi->short_left[0] >> 8));// & 0xff);
 
         if(wi->wav_header->num_channels == 2){
                 wi->buffer[2] = (wi->short_right[0] & 0xff);
@@ -374,11 +420,12 @@ int convert_double_to_short(WavInput *wi)
         }
  
         for(i = wi->wav_header->num_channels * 2; i < wi->nb_samples * 2; i+= wi->wav_header->num_channels * 2){
-                wi->buffer[i] = (wi->short_left[i/4] & 0xff);
-                wi->buffer[i + 1] = ((wi->short_left[i/4] >> 8) & 0xff);
+                wi->buffer[i] = (wi->short_left[i/2] & 255);
+                //wi->buffer[i + 1] = ((wi->short_left[i/4] >> 8) & 255);
+                wi->buffer[i + 1] = ((wi->short_left[i/2] >> 8));// & 0xff);
                 if(wi->wav_header->num_channels == 2){
                         wi->buffer[i + 2] = (wi->short_left[i/4] & 0xff);
-                        wi->buffer[i + 3] = ((wi->short_left[i/4] >> 8) & 0xff);
+                        wi->buffer[i + 3] = ((wi->short_left[i/4] >> 8));// & 0xff);
                 }
         }
         wat_log(LOG_PANIC, "\nConverted double to short");
@@ -444,31 +491,33 @@ int save_file(WavInput *wi)
 
         wat_log(LOG_PANIC, "\nheader saved");
 
-        convert_double_to_short2(wi);
+        convert_double_to_short3(wi);
 
         wat_log(LOG_PANIC, "\nConverted");
         int i;
+
         if(wh->num_channels == 2){
                 char * msg = malloc(64 * sizeof(char));
                 sprintf(msg, "\nSaving data as 2 channels, "
                                 "with nb_samples %d in which side", wi->nb_samples);
                 wat_log(LOG_PANIC, msg);         
         }
+        int iterator = wi->wav_header->num_channels;
 
-        /*
-        for(i = 0; i < wi->nb_samples * 2; i++){
-                fwrite(&wi->buffer[i], sizeof(char), 1, f);
+        for(i = 0; i < wi->nb_samples * iterator * 2; i += iterator){
+                fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
                 if(wh->num_channels == 2){
                         fwrite(&wi->buffer[i + 1], sizeof(char), 1, f);
                 }
         }
-        */
 
+        /*
         for(i = 0; i < wi->nb_samples; i++){
                 fwrite(&wi->short_left[i], sizeof(short int), 1, f);
                 if(wh->num_channels == 2)
                         fwrite(&wi->short_right[i], sizeof(short int), 1, f);
         }
+        */
 
         fclose(f);
         wat_log(LOG_PANIC, "\nsave_file DONE");
