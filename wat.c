@@ -199,19 +199,13 @@ int read_wav_data(WavInput * wi)
 
         wat_log(LOG_PANIC, "\nGoing to copy the data");
 
-        int iterator = wi->nb_samples;
         long int i = 0;
         long int it = 0;
-        if(wi->wav_header->num_channels == 2){
-                iterator = wi->nb_samples << 1;
-        }
         while(it < wi->wav_header->subchunk2_size){
-                //wi->left_side[i] = (double)buffer[it] / 32768.0;
                 wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
                 wi->zero_data[i] = 0;
                 it += 2;
                 if(wi->wav_header->num_channels == 2){
-                        //wi->right_side[i] = (double)buffer[it] / 32768.0;
                         wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
                         it+=2;
                 }
@@ -224,7 +218,7 @@ int read_wav_data(WavInput * wi)
         sprintf(msg, "\n read_wav_data DONE, ret = %d", ret);
         wat_log(LOG_PANIC, msg);
 
-        return ret;
+        return 1;
 }
 
 int parse_args(Arguments *wa, char *argv)
@@ -339,7 +333,7 @@ int init(WavInput *wi, int argc, char *argv[])
         return ret;
 }
 
-int convert_double_to_short3(WavInput *wi)
+int convert_double_to_short(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nConverting double to short");
 
@@ -352,7 +346,7 @@ int convert_double_to_short3(WavInput *wi)
         else {
                 wi->short_left = (short int *)malloc(sizeof(short int) 
                                 * wi->nb_samples);
-       }
+        }
 
         wi->buffer = (unsigned char *)malloc(sizeof(unsigned char) 
                         * wi->nb_samples * 2);
@@ -377,81 +371,6 @@ int convert_double_to_short3(WavInput *wi)
                         memcpy(&wi->buffer[i + 2], &wi->short_right[count], 2);
                 }
                 count++;
-        }
-        wat_log(LOG_PANIC, "\nConverted double to short");
-
-        return 1;
-}
-
-
-int convert_double_to_short(WavInput *wi)
-{
-        wat_log(LOG_PANIC, "\nConverting double to short");
-
-        if(wi->wav_header->num_channels == 2){
-                wi->short_left = (short int *)malloc(sizeof(short int) 
-                                * wi->nb_samples);
-                wi->short_right = (short int *)malloc(sizeof(short int) 
-                                * wi->nb_samples);
-        }
-        else {
-                wi->short_left = (short int *)malloc(sizeof(short int) 
-                                * wi->nb_samples);
-       }
-
-        wi->buffer = (unsigned char *)malloc(sizeof(unsigned char) 
-                        * wi->nb_samples * 2);
-
-        int i;
-        for(i = 0; i < wi->nb_samples; i++){
-                wi->short_left[i] = (short int)wi->left_side[i];
-                if(wi->wav_header->num_channels == 2){
-                        wi->short_right[i] = (short int)wi->right_side[i];
-                }
-        }
-
-        wi->buffer[0] = (wi->short_left[0] & 255);
-        //wi->buffer[1] = ((wi->short_left[0] >> 8) & 255);
-        wi->buffer[1] = ((wi->short_left[0] >> 8));// & 0xff);
-
-        if(wi->wav_header->num_channels == 2){
-                wi->buffer[2] = (wi->short_right[0] & 0xff);
-                wi->buffer[3] = ((wi->short_right[0] >> 8) & 0xff);
-        }
- 
-        for(i = wi->wav_header->num_channels * 2; i < wi->nb_samples * 2; i+= wi->wav_header->num_channels * 2){
-                wi->buffer[i] = (wi->short_left[i/2] & 255);
-                //wi->buffer[i + 1] = ((wi->short_left[i/4] >> 8) & 255);
-                wi->buffer[i + 1] = ((wi->short_left[i/2] >> 8));// & 0xff);
-                if(wi->wav_header->num_channels == 2){
-                        wi->buffer[i + 2] = (wi->short_left[i/4] & 0xff);
-                        wi->buffer[i + 3] = ((wi->short_left[i/4] >> 8));// & 0xff);
-                }
-        }
-        wat_log(LOG_PANIC, "\nConverted double to short");
-
-        return 1;
-}
-
-int convert_double_to_short2(WavInput *wi)
-{
-        wat_log(LOG_PANIC, "\nConverting double to short");
-
-        if(wi->wav_header->num_channels == 2){
-                wi->short_left = (short int *)malloc(sizeof(short int) * wi->nb_samples);
-                wi->short_right = (short int *)malloc(sizeof(short int) * wi->nb_samples);
-        }
-        else
-        {
-                wi->short_left = (short int *)malloc(sizeof(short int) * wi->nb_samples);
-        }
-
-        int i;
-        for(i = 0; i < wi->nb_samples; i++){
-                wi->short_left[i] = (short int)wi->left_side[i];
-                if(wi->wav_header->num_channels == 2){
-                        wi->short_right[i] = (short int)wi->right_side[i];
-                }
         }
         wat_log(LOG_PANIC, "\nConverted double to short");
 
@@ -491,7 +410,7 @@ int save_file(WavInput *wi)
 
         wat_log(LOG_PANIC, "\nheader saved");
 
-        convert_double_to_short3(wi);
+        convert_double_to_short(wi);
 
         wat_log(LOG_PANIC, "\nConverted");
         int i;
@@ -510,14 +429,6 @@ int save_file(WavInput *wi)
                         fwrite(&wi->buffer[i + 1], sizeof(char), 1, f);
                 }
         }
-
-        /*
-        for(i = 0; i < wi->nb_samples; i++){
-                fwrite(&wi->short_left[i], sizeof(short int), 1, f);
-                if(wh->num_channels == 2)
-                        fwrite(&wi->short_right[i], sizeof(short int), 1, f);
-        }
-        */
 
         fclose(f);
         wat_log(LOG_PANIC, "\nsave_file DONE");
@@ -545,16 +456,23 @@ int main(int argc, char **argv)
         ret = read_header_file(wav_input->wav_header, wav_input->file_name);
 
         /* getting the duration of audio */
-        int sample_rate = wav_input->wav_header->subchunk2_size 
-                / wav_input->wav_header->sample_rate;
+        float seconds = 0;
         if(wav_input->wav_header->num_channels == 1){
+                seconds = wav_input->wav_header->subchunk2_size 
+                / wav_input->wav_header->sample_rate;
+                seconds /= 2;
+
                 char * msg = malloc(64 * sizeof(char)); 
-                sprintf(msg, "\n\nDuration => %d seconds\n", sample_rate);
+                sprintf(msg, "\n\nDuration => %.3f seconds 1 ch\n", seconds);
                 wat_log(LOG_INFO, msg);
         }
         else if(wav_input->wav_header->num_channels == 2){
+                seconds = wav_input->wav_header->subchunk2_size 
+                / wav_input->wav_header->sample_rate;
+                seconds /= 4;
+
                 char * msg = malloc(64 * sizeof(char)); 
-                sprintf(msg, "\n\nDuration => %d seconds\n", sample_rate >> 1);
+                sprintf(msg, "\n\nDuration => %.3f seconds, 2 ch\n", seconds);
                 wat_log(LOG_INFO, msg);
         }
 
@@ -565,13 +483,53 @@ int main(int argc, char **argv)
         ret = read_wav_data(wav_input);
 
         if(wav_input->wat_args->dft){
-                ret = dft(wav_input->nb_samples, wav_input->left_side, 
-                                wav_input->zero_data);
-                if(wav_input->wav_header->num_channels == 2){
-                        ret = dft(wav_input->nb_samples, wav_input->right_side, 
-                                        wav_input->zero_data);
+                int i;
+                int freq = 44100;
+                double * temp = (double *)malloc(44100 * sizeof(double));
+                wat_log(LOG_PANIC, "\n\nGoing to apply the DFT");
+                char * msg = malloc(64 * sizeof(char));
+                for(i = 0; i < seconds; i++){
+                        if((float)(seconds - i) < 1){
+                                sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 1", (float)(seconds - i));
+                                wat_log(LOG_PANIC, msg);
+
+                                int last_part = wav_input->nb_samples - (i * freq);
+                                sprintf(msg, "\nRealloc temp with %d size in Channel 1", last_part);
+                                wat_log(LOG_PANIC, msg);
+
+                                realloc(temp, sizeof(double) * last_part);
+                                memcpy(temp, &wav_input->left_side[i * freq], last_part * sizeof(double));
+                                ret = dft(last_part, temp, wav_input->zero_data);
+                                memcpy(&wav_input->left_side[i * freq], temp, last_part * sizeof(double));
+
+                                if(wav_input->wav_header->num_channels == 2){
+                                        sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
+                                        wat_log(LOG_PANIC, msg);
+
+                                        memcpy(temp, &wav_input->right_side[i * freq], last_part * sizeof(double));
+                                        ret = dft(last_part, temp, wav_input->zero_data);
+                                        memcpy(&wav_input->right_side[i * freq], temp, last_part * sizeof(double));
+                                }
+                        } 
+                        else {
+                                sprintf(msg, "\n%d of %f seconds, in Channel 1", i, seconds);
+                                wat_log(LOG_PANIC, msg);
+
+                                memcpy(temp, &wav_input->left_side[i * freq], freq * sizeof(double));
+                                ret = dft(freq, temp, wav_input->zero_data);
+                                memcpy(&wav_input->left_side[i * freq], temp, freq * sizeof(double));
+
+                                if(wav_input->wav_header->num_channels == 2){
+                                        sprintf(msg, "\n%d of %f seconds, in Channel 1", i, seconds);
+                                        wat_log(LOG_PANIC, msg);
+
+                                        memcpy(temp, &wav_input->right_side[i * freq], freq * sizeof(double));
+                                        ret = dft(freq, temp, wav_input->zero_data);
+                                        memcpy(&wav_input->right_side[i * freq], temp, freq * sizeof(double));
+                                }
+                        }
                 }
-        }
+       }
 
         if(ret < 0){
                 exit(4);
