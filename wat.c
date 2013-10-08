@@ -500,6 +500,7 @@ int main(int argc, char **argv)
                                 realloc(temp, sizeof(double) * last_part);
                                 memcpy(temp, &wav_input->left_side[i * freq], last_part * sizeof(double));
                                 ret = dft(last_part, temp, wav_input->zero_data);
+                                ret = inverse_dft(last_part, temp, wav_input->zero_data);
                                 memcpy(&wav_input->left_side[i * freq], temp, last_part * sizeof(double));
 
                                 if(wav_input->wav_header->num_channels == 2){
@@ -508,6 +509,7 @@ int main(int argc, char **argv)
 
                                         memcpy(temp, &wav_input->right_side[i * freq], last_part * sizeof(double));
                                         ret = dft(last_part, temp, wav_input->zero_data);
+                                        ret = inverse_dft(last_part, temp, wav_input->zero_data);
                                         memcpy(&wav_input->right_side[i * freq], temp, last_part * sizeof(double));
                                 }
                         } 
@@ -517,6 +519,7 @@ int main(int argc, char **argv)
 
                                 memcpy(temp, &wav_input->left_side[i * freq], freq * sizeof(double));
                                 ret = dft(freq, temp, wav_input->zero_data);
+                                ret = inverse_dft(freq, temp, wav_input->zero_data);
                                 memcpy(&wav_input->left_side[i * freq], temp, freq * sizeof(double));
 
                                 if(wav_input->wav_header->num_channels == 2){
@@ -525,6 +528,7 @@ int main(int argc, char **argv)
 
                                         memcpy(temp, &wav_input->right_side[i * freq], freq * sizeof(double));
                                         ret = dft(freq, temp, wav_input->zero_data);
+                                        ret = inverse_dft(freq, temp, wav_input->zero_data);
                                         memcpy(&wav_input->right_side[i * freq], temp, freq * sizeof(double));
                                 }
                         }
@@ -540,16 +544,6 @@ int main(int argc, char **argv)
 
         if(ret < 0){
                 exit(4);
-        }
-
-
-        if(wav_input->wat_args->idft){
-                ret = inverse_dft(wav_input->nb_samples, wav_input->left_side, 
-                                wav_input->zero_data);
-                if(wav_input->wav_header->num_channels == 2){
-                        ret = inverse_dft(wav_input->nb_samples, 
-                                        wav_input->right_side, wav_input->zero_data);
-                }
         }
 
         if(ret < 0){
