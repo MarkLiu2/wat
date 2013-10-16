@@ -484,16 +484,17 @@ int main(int argc, char **argv)
 
         if(wav_input->wat_args->dft){
                 int i;
-                int freq = 44100;
-                double * temp = (double *)malloc(44100 * sizeof(double));
+                long int freq = wav_input->wav_header->sample_rate;
+                double * temp = (double *)malloc(freq * sizeof(double));
                 wat_log(LOG_PANIC, "\n\nGoing to apply the DFT");
                 char * msg = malloc(64 * sizeof(char));
                 for(i = 0; i < seconds; i++){
                         if((float)(seconds - i) < 1){
-                                sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 1", (float)(seconds - i));
+                                int last_part = wav_input->nb_samples - (i * freq);
+
+                                sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 1, from %lu to %lu", (float)(seconds - i), i * freq, i * freq + last_part);
                                 wat_log(LOG_PANIC, msg);
 
-                                int last_part = wav_input->nb_samples - (i * freq);
                                 sprintf(msg, "\nRealloc temp with %d size in Channel 1", last_part);
                                 wat_log(LOG_PANIC, msg);
 
@@ -504,30 +505,36 @@ int main(int argc, char **argv)
                                 memcpy(&wav_input->left_side[i * freq], temp, last_part * sizeof(double));
 
                                 if(wav_input->wav_header->num_channels == 2){
-                                        sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
+                                        sprintf(msg, "\n\nDFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
                                         wat_log(LOG_PANIC, msg);
 
                                         memcpy(temp, &wav_input->right_side[i * freq], last_part * sizeof(double));
                                         ret = dft(last_part, temp, wav_input->zero_data);
+                                        sprintf(msg, "\n\nIDFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
+                                        wat_log(LOG_PANIC, msg);
                                         ret = inverse_dft(last_part, temp, wav_input->zero_data);
                                         memcpy(&wav_input->right_side[i * freq], temp, last_part * sizeof(double));
                                 }
                         } 
                         else {
-                                sprintf(msg, "\n%d of %f seconds, in Channel 1", i, seconds);
+                                sprintf(msg, "\n%d of %f seconds, in Channel 1, in %lu to %lu", i, seconds, i * freq, i * freq + freq);
                                 wat_log(LOG_PANIC, msg);
 
                                 memcpy(temp, &wav_input->left_side[i * freq], freq * sizeof(double));
                                 ret = dft(freq, temp, wav_input->zero_data);
+                                sprintf(msg, "\nIDFT %d of %f seconds, in Channel 1", i, seconds);
+                                wat_log(LOG_PANIC, msg);
                                 ret = inverse_dft(freq, temp, wav_input->zero_data);
                                 memcpy(&wav_input->left_side[i * freq], temp, freq * sizeof(double));
 
                                 if(wav_input->wav_header->num_channels == 2){
-                                        sprintf(msg, "\n%d of %f seconds, in Channel 1", i, seconds);
+                                        sprintf(msg, "\nDFT %d of %f seconds, in Channel 2", i, seconds);
                                         wat_log(LOG_PANIC, msg);
 
                                         memcpy(temp, &wav_input->right_side[i * freq], freq * sizeof(double));
                                         ret = dft(freq, temp, wav_input->zero_data);
+                                        sprintf(msg, "\nIDFT %d of %f seconds, in Channel 2", i, seconds);
+                                        wat_log(LOG_PANIC, msg);
                                         ret = inverse_dft(freq, temp, wav_input->zero_data);
                                         memcpy(&wav_input->right_side[i * freq], temp, freq * sizeof(double));
                                 }

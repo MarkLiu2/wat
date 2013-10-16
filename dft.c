@@ -11,6 +11,7 @@ int dft(long int length, double real_sample[], double imag_sample[])
 
         wat_log(LOG_INFO, "\nDFT function.\n\n");
         long int i, j;
+        int freq = length;
         double arg;
         double cosarg,sinarg;
         double *temp_real=NULL,*temp_imag=NULL;
@@ -41,17 +42,33 @@ int dft(long int length, double real_sample[], double imag_sample[])
                         temp_real[i] += (real_sample[j] * cosarg - imag_sample[j] * sinarg);
                         temp_imag[i] += (real_sample[j] * sinarg + imag_sample[j] * cosarg);
                 }
+                if(i < freq/2){
+                        if(i < freq/4){
+                                temp_real[i] *= 2.0;
+                        }
+                        else if( i > freq/4){
+                                temp_real[i] *= 2.0;
+                        }
+                }
         }
+        sprintf(msg, "\nLast iteration in i => %lu", i);
+        wat_log(LOG_PANIC, msg);
+
 
         wat_log(LOG_PANIC, "\n\nEnd of dft \n\n");
         /* Copy the data back */
         for (i=0; i<length; i+=1) 
         {
-                if(i % 1001 == 0)
-                        wat_log(LOG_PANIC, "\nDFT Copying data");
+                if(i % 1001 == 0){
+                        sprintf(msg, "\nDFT Copying data  %lu", i);
+                        wat_log(LOG_PANIC, msg);
+                }
                 real_sample[i] = temp_real[i];
                 imag_sample[i] = temp_imag[i];
         }
+        sprintf(msg, "\nLast Copy in i => %lu", i);
+        wat_log(LOG_PANIC, msg);
+
 
         free(temp_real);
         free(temp_imag);
@@ -98,16 +115,23 @@ int inverse_dft(long int length, double real_sample[], double imag_sample[])
                         temp_imag[i] += (real_sample[j] * sinarg + imag_sample[j] * cosarg);
                 }
         }
+        sprintf(msg, "\nLast iteration in i => %lu", i);
+        wat_log(LOG_PANIC, msg);
 
         wat_log(LOG_PANIC, "\n\nEnd of idft \n\n");
         /* Copy the data back */
         for (i=0; i<length; i+=1) 
         {
-                if(i % 1001 == 0)
-                        wat_log(LOG_PANIC, "\nIDFT Copying data");
+                if(i % 1001 == 0){
+                        sprintf(msg, "\nIDFT Copying data  %lu", i);
+                        wat_log(LOG_PANIC, msg);
+                }
                 real_sample[i] = temp_real[i] / (double)length;
                 imag_sample[i] = temp_imag[i] / (double)length;
         }
+        sprintf(msg, "\nLast copy in i => %lu", i);
+        wat_log(LOG_PANIC, msg);
+
 
         free(temp_real);
         free(temp_imag);
