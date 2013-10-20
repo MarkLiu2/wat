@@ -145,7 +145,7 @@ int print_wav_data(WavInput *wi)
         return 1;
 }
 
-double bytes_to_double(char first, char second)
+double bytes_to_double(uint8_t first, uint8_t second)
 {
         short data;
         data = (second << 8) + first;
@@ -157,7 +157,7 @@ int read_wav_data(WavInput * wi)
         wat_log(LOG_PANIC, "\nIn read_wav_data\n");
         FILE *f;
         int ret = 1;
-        unsigned char * buffer;
+        uint8_t * buffer;
 
         f = fopen(wi->file_name, "r");
         if (f == NULL){
@@ -166,11 +166,11 @@ int read_wav_data(WavInput * wi)
                 return -1;
         }
 
-        buffer = (unsigned char *) malloc(sizeof(unsigned char) * 
+        buffer = (uint8_t *) malloc(sizeof(uint8_t) * 
                         (wi->wav_header->subchunk2_size));
 
         fseek(f, HEADER_SIZE, SEEK_SET);
-        fread(buffer, sizeof(unsigned char), (wi->wav_header->subchunk2_size), f);
+        fread(buffer, sizeof(uint8_t), (wi->wav_header->subchunk2_size), f);
 
         if(wi->wat_args->print_hexa_data){
                 wat_log(LOG_PANIC, "\nprint_hexa_data");
