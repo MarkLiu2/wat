@@ -44,13 +44,14 @@ typedef struct Arguments{
 
         int print_data;
         int dft;
-        int idft;
+        int dft_sec;
         int print_help;
         int has_input;
         int has_output;
         int print_hexa_data;
         int print_nb_data;
         int nb_to_print;
+        int fft;
 } Arguments;
 
 
@@ -66,6 +67,9 @@ typedef struct WavInput{
 
         double *left_side;
         double *right_side;
+
+        double *left_fixed;
+        double *right_fixed;
 
         double *zero_data;
 
