@@ -508,19 +508,31 @@ void divides_nfft(double * temp, int freq)
                 temp[i] /= freq;
 }
 
+void print_array(double *temp, int size)
+{
+        int i;
+        for(i = 0; i < size; i++){
+                printf(" %f ", temp[i]);
+                if(i % 10 == 0)
+                        printf("\n");
+        }
+
+
+}
 int run_fft(WavInput *wi, float seconds)
 {
         int i, ret;
+        int test = 0;
         int freq = wi->wav_header->sample_rate;
         freq <<= 1;
         printf("\nfrequencia => %d", freq);
         int NFFT = (int)pow(2.0, ceil(log((double)freq)/log(2.0)));
-        printf("NFFT = %d\n", NFFT);
+        printf("\nNFFT = %d", NFFT);
         double * temp = (double *)calloc(2 * NFFT + 1,  sizeof(double));
         wat_log(LOG_PANIC, "\n\nGoing to apply the FFT");
         char * msg = malloc(64 * sizeof(char));
 
-        int last_part = wi->nb_samples;
+        int last_part = wi->nb_samples * 2;
         printf("\nnb_samples= %d", last_part);
 
         fix_data_to_fft(wi);
@@ -529,7 +541,7 @@ int run_fft(WavInput *wi, float seconds)
                 if((float)(seconds - i) < 1){
                         last_part -= (i * freq);
                         printf("\nlast part = %d", last_part);
-                        int NFFT = (int)pow(2.0, ceil(log((double)last_part)/log(2.0)));
+                        NFFT = (int)pow(2.0, ceil(log((double)last_part)/log(2.0)));
                         printf("\nNFFT = %d", NFFT);
  
                         sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 1, from %d to %d", (float)(seconds - i), i * freq, i * freq + last_part);
@@ -539,7 +551,7 @@ int run_fft(WavInput *wi, float seconds)
                         wat_log(LOG_PANIC, msg);
 
                         realloc(temp, sizeof(double) * 2 * NFFT + 1);
-                        memset(temp, 0, sizeof(double) * 2 * NFFT);
+                        memset(temp, 0, sizeof(double) * 2 * NFFT + 1);
                         memcpy(&temp[0], &wi->left_fixed[i * freq], last_part * sizeof(double));
                         four1(temp, NFFT, 1);
                         four1(temp, NFFT, -1);
@@ -551,7 +563,7 @@ int run_fft(WavInput *wi, float seconds)
                                 sprintf(msg, "\n\nFFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
                                 wat_log(LOG_PANIC, msg);
 
-                                memset(temp, 0, sizeof(double) * 2 * NFFT);
+                                memset(temp, 0, sizeof(double) * 2 * NFFT + 1);
                                 memcpy(temp, &wi->right_fixed[i * freq], last_part * sizeof(double));
                                 four1(temp, NFFT, 1);
                                 sprintf(msg, "\n\nIFFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
@@ -562,7 +574,7 @@ int run_fft(WavInput *wi, float seconds)
                         }
                 } 
                 else {
-                        sprintf(msg, "\n%d of %f seconds, in Channel 1, in %d to %d", i, seconds, i * freq, i * freq + freq);
+                        sprintf(msg, "\nFFT %d of %f seconds, in Channel 1, in %d to %d", i, seconds, i * freq, i * freq + freq);
                         wat_log(LOG_PANIC, msg);
 
                         memset(temp, 0, sizeof(double) * NFFT * 2 + 1);
@@ -570,18 +582,22 @@ int run_fft(WavInput *wi, float seconds)
                         four1(temp, NFFT, 1);
                         sprintf(msg, "\nIFFT %d of %f seconds, in Channel 1", i, seconds);
                         wat_log(LOG_PANIC, msg);
+
+                                print_array(temp, NFFT * 2 + 1);
                         four1(temp, NFFT, -1);
+
+
                         divides_nfft(temp, NFFT);
                         memcpy(&wi->left_fixed[i * freq], &temp[0], freq * sizeof(double));
-
+                         
                         if(wi->wav_header->num_channels == 2){
-                                sprintf(msg, "\nDFT %d of %f seconds, in Channel 2", i, seconds);
+                                sprintf(msg, "\nFFT %d of %f seconds, in Channel 2", i, seconds);
                                 wat_log(LOG_PANIC, msg);
 
                                 memset(temp, 0, sizeof(double) * NFFT * 2 + 1);
                                 memcpy(&temp[0], &wi->right_fixed[i * freq], freq * sizeof(double));
                                 four1(temp, NFFT, 1);
-                                sprintf(msg, "\nIDFT %d of %f seconds, in Channel 2", i, seconds);
+                                sprintf(msg, "\nIFFT %d of %f seconds, in Channel 2", i, seconds);
                                 wat_log(LOG_PANIC, msg);
                                 four1(temp, NFFT, -1);
                                 divides_nfft(temp, NFFT);
@@ -714,7 +730,6 @@ int main(int argc, char **argv)
         else if(wav_input->wat_args->fft){
                 int last_part = wav_input->nb_samples;
                 printf("\nmain nb_samples= %d", last_part);
- 
                 run_fft(wav_input, seconds);
         }
 
