@@ -21,6 +21,7 @@ void help()
         printf("\n\t-sec <int>           Run DFT only in <int> seconds");
         printf("\n\t-log_level=<level>   Define the level of logging, can be"
                         "INFO (default), ERROR and PANIC.");
+        printf("\n\t-eq <float>          Equalize audio with main factor <float>");
 
         printf("\n\n");
 }
@@ -231,21 +232,21 @@ int fix_data_to_fft(WavInput *wi)
                 wi->right_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
         }
 
-        wat_log(LOG_PANIC, "\nGoing to copy left data");
         int i;
         if(wi->left_side){
+                wat_log(LOG_PANIC, "\nGoing to copy left data");
                 for(i = 0; i < wi->nb_samples; i++){
                         wi->left_fixed[2*i+1] = wi->left_side[i];
-                        wi->left_fixed[2*i+1] = 0;
+                        wi->left_fixed[2*i+2] = 0;
                 }
         }
         if(wi->wav_header->num_channels == 2){
-                wat_log(LOG_PANIC, "\nGoing to copy right data");
                 if(wi->right_side){
+                        wat_log(LOG_PANIC, "\nGoing to copy right data");
                         for(i = 0; i < wi->nb_samples; i++){
                                 wi->right_fixed[2*i+1] = wi->right_side[i];
                                 wi->right_fixed[2*i+2] = 0;
-                        }
+                       }
                 }
         }
         wat_log(LOG_PANIC, "\nfix_data_to_fft function DONE");
@@ -303,6 +304,9 @@ int parse_args(Arguments *wa, char *argv)
         else if(strcmp(argv, "-sec") == 0){
                 return 5;
         }
+        else if(strcmp(argv, "-eq") == 0){
+                return 6;
+        }
         else if(strcmp(argv, "-dft") == 0){
                 wa->dft = 1;
         }
@@ -328,6 +332,39 @@ int parse_args(Arguments *wa, char *argv)
         return ret;
 }
 
+int calculate_factors(Factors * fc, float main_fc)
+{
+        char * msg_fac = (char *)malloc(64 * sizeof(char));
+        sprintf(msg_fac, "\nCalculating factors with main factor equal %f", main_fc);
+        wat_log(LOG_PANIC, msg_fac);
+
+        fc->fac_0 = 0.7 * main_fc;
+        fc->fac_1 = 0.75 * main_fc;
+        fc->fac_2 = 0.90 * main_fc;
+        fc->fac_3 = 1.0 * main_fc;
+        fc->fac_4 = 1.1 * main_fc;
+        fc->fac_5 = 1.1 * main_fc;
+        fc->fac_6 = 1.0 * main_fc;
+        fc->fac_7 = 0.9 * main_fc;
+        fc->fac_8 = 0.75 * main_fc;
+        fc->fac_9 = 0.7 * main_fc;
+        fc->fac_10 = 0.7 * main_fc;
+
+        wat_log(LOG_INFO, "\n\nFactors:\n");
+        printf("\n\tfac_0 = %f", fc->fac_0);
+        printf("\n\tfac_1 = %f", fc->fac_1);
+        printf("\n\tfac_2 = %f", fc->fac_2);
+        printf("\n\tfac_3 = %f", fc->fac_3);
+        printf("\n\tfac_4 = %f", fc->fac_4);
+        printf("\n\tfac_5 = %f", fc->fac_5);
+        printf("\n\tfac_6 = %f", fc->fac_6);
+        printf("\n\tfac_7 = %f", fc->fac_7);
+        printf("\n\tfac_8 = %f", fc->fac_8);
+        printf("\n\tfac_9 = %f", fc->fac_9);
+        printf("\n\tfac_10 = %f\n", fc->fac_10);
+        
+        return 1;
+}
 int init(WavInput *wi, int argc, char *argv[])
 {
         FILE *f;        
@@ -345,6 +382,7 @@ int init(WavInput *wi, int argc, char *argv[])
         wi->wat_args->dft = 0;
         wi->wat_args->dft_sec = 0;
         wi->wat_args->fft = 0;
+        wi->wat_args->equalize = 0;
 
         for(i = 1; i < argc; i++){
                 ret = parse_args(wi->wat_args, argv[i]);
@@ -364,7 +402,12 @@ int init(WavInput *wi, int argc, char *argv[])
                         wi->wat_args->dft_sec = atoi(argv[i + 1]);
                         i++;
                 }
- 
+                else if(ret == 6){
+                        wi->wat_args->equalize = atof(argv[i + 1]);
+                        wi->factors = (Factors *)malloc(sizeof(Factors));
+                        calculate_factors(wi->factors, wi->wat_args->equalize);
+                        i++;
+                }
                 else if(ret < 1)
                         exit(1);
         }
@@ -501,24 +544,149 @@ int save_file(WavInput *wi)
         return 1;        
 }
 
-void divides_nfft(double * temp, int freq)
+void divides_nfft(double * temp, int size)
 {
+        wat_log(LOG_PANIC, "\nDivides ");
         int i;
-        for(i = 0; i < freq; i++)
-                temp[i] /= freq;
+        for(i = 0; i < size; i++)
+                temp[i] /= size;
+
+        wat_log(LOG_PANIC, " DONE");
 }
 
-void print_array(double *temp, int size)
+void print_array(double *temp, int size, int it)
 {
+        printf("\n\n\t\tPrinting array");
         int i;
         for(i = 0; i < size; i++){
-                printf(" %f ", temp[i]);
-                if(i % 10 == 0)
+                printf(" %f ", temp[it * 88200 + i]);
+                if(i % 10 == 0 && i != 0)
                         printf("\n");
         }
 
+        printf("\n\n\t\tPrinting array DONE");
 
 }
+
+int array_is_equal(double *vet1, double *vet2, int size, int it)
+{
+        printf("\n\nTesting if arrays is equals with size => %d \t it => %d", size, it);
+        int i;
+        int is_equal = 1;
+        for(i = 0; i < size; i++){
+                if(vet1[i] - vet2[it * size + i] > 1){
+                        printf("\n\nArrays diferentes em i = %d", i);
+                        printf("\n\nValor de Vet1 = %f \t Vet2 = %f", vet1[i], vet2[i]);
+                        is_equal = 0;
+                }
+        }
+        return is_equal == 1 ? 1 : 0;
+}
+
+int equalizeXk(WavInput *wi, double *temp, int size)
+{
+        int i;
+        size >>=1;
+        if(size < BAND_0)
+                return 1;
+        for(i = BAND_MIN; i < BAND_0; i++)
+                temp[i] *= wi->factors->fac_0;
+    
+        if(size < BAND_1)
+                return 1;
+        for(i = BAND_0; i < BAND_1; i++)
+                temp[i] *= wi->factors->fac_1;
+
+        if(size < BAND_2)
+                return 1;
+        for(i = BAND_1; i < BAND_2; i++)
+                temp[i] *= wi->factors->fac_2;
+
+        if(size < BAND_3)
+                return 1;
+        for(i = BAND_2; i < BAND_3; i++)
+                temp[i] *= wi->factors->fac_3;
+
+        if(size < BAND_4)
+                return 1;
+        for(i = BAND_3; i < BAND_4; i++)
+                temp[i] *= wi->factors->fac_4;
+
+        if(size < BAND_5)
+                return 1;
+        for(i = BAND_4; i < BAND_5; i++)
+                temp[i] *= wi->factors->fac_5;
+
+        if(size < BAND_6)
+                return 1;
+        for(i = BAND_5; i < BAND_6; i++)
+                temp[i] *= wi->factors->fac_6;
+
+        if(size < BAND_7)
+                return 1;
+        for(i = BAND_6; i < BAND_7; i++)
+                temp[i] *= wi->factors->fac_7;
+
+        if(size < BAND_8)
+                return 1;
+        for(i = BAND_7; i < BAND_8; i++)
+                temp[i] *= wi->factors->fac_8;
+
+        if(size < BAND_9)
+                return 1;
+        for(i = BAND_8; i < BAND_9; i++)
+                temp[i] *= wi->factors->fac_9;
+
+        if(size < BAND_MAX)
+                return 1;
+        for(i = BAND_9; i < BAND_MAX; i++)
+                temp[i] *= wi->factors->fac_10;
+
+        return 1;
+}
+
+
+int equalize44k(WavInput *wi, double *temp, int size)
+{
+        wat_log(LOG_PANIC, "\nEqualizing audio with 44.1k");
+        int i;
+        for(i = BAND_MIN; i < BAND_0; i++)
+                temp[i] *= wi->factors->fac_0;
+    
+        for(i = BAND_0; i < BAND_1; i++)
+                temp[i] *= wi->factors->fac_1;
+
+        for(i = BAND_1; i < BAND_2; i++)
+                temp[i] *= wi->factors->fac_2;
+
+        for(i = BAND_2; i < BAND_3; i++)
+                temp[i] *= wi->factors->fac_3;
+
+        for(i = BAND_3; i < BAND_4; i++)
+                temp[i] *= wi->factors->fac_4;
+
+        for(i = BAND_4; i < BAND_5; i++)
+                temp[i] *= wi->factors->fac_5;
+
+        for(i = BAND_5; i < BAND_6; i++)
+                temp[i] *= wi->factors->fac_6;
+
+        for(i = BAND_6; i < BAND_7; i++)
+                temp[i] *= wi->factors->fac_7;
+
+        for(i = BAND_7; i < BAND_8; i++)
+                temp[i] *= wi->factors->fac_8;
+
+        for(i = BAND_8; i < BAND_9; i++)
+                temp[i] *= wi->factors->fac_9;
+
+        for(i = BAND_9; i < BAND_MAX; i++)
+                temp[i] *= wi->factors->fac_10;
+
+        return 1;
+}
+
+/* FFT ----------------------------------------------------------------------- */
 int run_fft(WavInput *wi, float seconds)
 {
         int i, ret;
@@ -528,7 +696,8 @@ int run_fft(WavInput *wi, float seconds)
         printf("\nfrequencia => %d", freq);
         int NFFT = (int)pow(2.0, ceil(log((double)freq)/log(2.0)));
         printf("\nNFFT = %d", NFFT);
-        double * temp = (double *)calloc(2 * NFFT + 1,  sizeof(double));
+        int array_size = 2 * NFFT + 1;
+        double * temp = (double *)calloc(array_size, sizeof(double));
         wat_log(LOG_PANIC, "\n\nGoing to apply the FFT");
         char * msg = malloc(64 * sizeof(char));
 
@@ -538,39 +707,131 @@ int run_fft(WavInput *wi, float seconds)
         fix_data_to_fft(wi);
 
         for(i = 0; i < seconds; i++){
-                sprintf(msg, "\nFFT %d of %f seconds, in Channel 1, in %d to %d", i, seconds, i * freq, i * freq + freq);
-                wat_log(LOG_PANIC, msg);
+                if((float)(seconds - i) < 1){
+                        last_part -= (i * freq);
+                        printf("\nlast part = %d", last_part);
+                        NFFT = (int)pow(2.0, ceil(log((double)last_part)/log(2.0)));
+                        array_size = 2 * NFFT + 1;
+                        printf("\nNFFT = %d", NFFT);
 
-                memset(temp, 0, sizeof(double) * NFFT * 2 + 1);
-                memcpy(&temp[0], &wi->left_fixed[i * freq], freq * sizeof(double));
-                four1(temp, NFFT, 1);
-                sprintf(msg, "\nIFFT %d of %f seconds, in Channel 1", i, seconds);
-                wat_log(LOG_PANIC, msg);
-
-                print_array(temp, NFFT * 2 + 1);
-                four1(temp, NFFT, -1);
-
-
-                divides_nfft(temp, NFFT);
-                memcpy(&wi->left_fixed[i * freq], &temp[0], freq * sizeof(double));
-
-                if(wi->wav_header->num_channels == 2){
-                        sprintf(msg, "\nFFT %d of %f seconds, in Channel 2", i, seconds);
+                        sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 1, from %d to %d", (float)(seconds - i), i * freq, i * freq + last_part);
                         wat_log(LOG_PANIC, msg);
 
-                        memset(temp, 0, sizeof(double) * NFFT * 2 + 1);
-                        memcpy(&temp[0], &wi->right_fixed[i * freq], freq * sizeof(double));
+                        sprintf(msg, "\nRealloc temp with %d size in Channel 1", last_part);
+                        wat_log(LOG_PANIC, msg);
+
+                        realloc(temp, sizeof(double) * array_size);
+                        memset(temp, 0, sizeof(double) * array_size);
+                        memcpy(temp, &wi->left_fixed[i * freq], last_part * sizeof(double));
                         four1(temp, NFFT, 1);
-                        sprintf(msg, "\nIFFT %d of %f seconds, in Channel 2", i, seconds);
-                        wat_log(LOG_PANIC, msg);
+
+                        if(wi->wat_args->equalize != 0){
+                                if(wi->wav_header->sample_rate == 44100){
+                                        equalize44k(wi, temp, NFFT);
+                                }
+                                else{
+                                        equalizeXk(wi, temp, NFFT);
+                                }
+                        }
+
                         four1(temp, NFFT, -1);
                         divides_nfft(temp, NFFT);
-                        memcpy(&wi->right_fixed[i * freq], &temp[0], freq * sizeof(double));
+                        memcpy(&wi->left_fixed[i * freq], temp, last_part * sizeof(double));
+
+                        wat_log(LOG_PANIC, "\nChannel 1 finished");
+                        if(wi->wav_header->num_channels == 2){
+                                sprintf(msg, "\n\nFFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
+                                wat_log(LOG_PANIC, msg);
+
+                                memset(temp, 0, sizeof(double) * array_size);
+                                memcpy(temp, &wi->right_fixed[i * freq], last_part * sizeof(double));
+                                four1(temp, NFFT, 1);
+                                sprintf(msg, "\n\nIFFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
+                                wat_log(LOG_PANIC, msg);
+
+                                if(wi->wat_args->equalize != 0){
+                                        if(wi->wav_header->sample_rate == 44100){
+                                                equalize44k(wi, temp, NFFT);
+                                        }
+                                        else{
+                                                equalizeXk(wi, temp, NFFT);
+                                        }
+                                }
+
+                                four1(temp, NFFT, -1);
+
+                                divides_nfft(temp, NFFT);
+                                memcpy(&wi->right_fixed[i * freq], temp, last_part * sizeof(double));
+                        }
+                } 
+                else {
+
+                        sprintf(msg, "\nFFT %d of %f seconds, in Channel 1, in %d to %d", i, seconds, i * freq, i * freq + freq);
+                        wat_log(LOG_PANIC, msg);
+
+                        memset(temp, 0, sizeof(double) * array_size);
+                        memcpy(temp, &wi->left_fixed[i * freq], freq * sizeof(double));
+
+                        four1(temp, NFFT, 1);
+                        sprintf(msg, "\nIFFT %d of %f seconds, in Channel 1", i, seconds);
+                        wat_log(LOG_PANIC, msg);
+
+                        if(wi->wat_args->equalize != 0){
+                                if(wi->wav_header->sample_rate == 44100){
+                                        equalize44k(wi, temp, NFFT);
+                                }
+                                else{
+                                        equalizeXk(wi, temp, NFFT);
+                                }
+                        }
+
+                        four1(temp, NFFT, -1);
+
+                        divides_nfft(temp, NFFT);
+
+                        memcpy(&wi->left_fixed[i * freq], temp, freq * sizeof(double));
+                        wat_log(LOG_PANIC, "\nmemcpy ch 1 DONE");
+
+                        wat_log(LOG_PANIC, "\n\tchannel 1 DONE\n\n");
+
+                        if(wi->wav_header->num_channels == 2){
+                                sprintf(msg, "\nFFT %d of %f seconds, in Channel 2", i, seconds);
+                                wat_log(LOG_PANIC, msg);
+
+                                memset(temp, 0, sizeof(double) * NFFT * 2 + 1);
+                                memset(temp, 0, sizeof(double) * array_size);
+                                memcpy(temp, &wi->right_fixed[i * freq], freq * sizeof(double));
+
+                                four1(temp, NFFT, 1);
+
+                                sprintf(msg, "\nIFFT %d of %f seconds, in Channel 2", i, seconds);
+                                wat_log(LOG_PANIC, msg);
+
+                                if(wi->wat_args->equalize != 0){
+                                        if(wi->wav_header->sample_rate == 44100){
+                                                equalize44k(wi, temp, NFFT);
+                                        }
+                                        else{
+                                                equalizeXk(wi, temp, NFFT);
+                                        }
+                                }
+
+                                four1(temp, NFFT, -1);
+                                divides_nfft(temp, NFFT);
+
+                                wat_log(LOG_PANIC, "\nmemcpy ch 2 DONE");
+                                memcpy(&wi->right_fixed[i * freq], temp, freq * sizeof(double));
+
+                                wat_log(LOG_PANIC, "\n\tchannel 2 DONE\n\n");
+
+                        }
                 }
         }
         back_data_to_normal(wi);
         return 1;
 }
+
+/* END FFT -------------------------------------------------------------------- */
 
 int run_dft(WavInput *wi, float seconds)
 {
@@ -728,40 +989,4 @@ int main(int argc, char **argv)
 /*
  * para menos de um segundo dentro do for do fft
  * 
-                if((float)(seconds - i) < 1){
-                        last_part -= (i * freq);
-                        printf("\nlast part = %d", last_part);
-                        NFFT = (int)pow(2.0, ceil(log((double)last_part)/log(2.0)));
-                        printf("\nNFFT = %d", NFFT);
- 
-                        sprintf(msg, "\n\nLess than a seconds, %.3f seconds missing, in Channel 1, from %d to %d", (float)(seconds - i), i * freq, i * freq + last_part);
-                        wat_log(LOG_PANIC, msg);
-
-                        sprintf(msg, "\nRealloc temp with %d size in Channel 1", last_part);
-                        wat_log(LOG_PANIC, msg);
-
-                        realloc(temp, sizeof(double) * 2 * NFFT + 1);
-                        memset(temp, 0, sizeof(double) * 2 * NFFT + 1);
-                        memcpy(&temp[0], &wi->left_fixed[i * freq], last_part * sizeof(double));
-                        four1(temp, NFFT, 1);
-                        four1(temp, NFFT, -1);
-                        divides_nfft(temp, NFFT);
-                        memcpy(&wi->left_fixed[i * freq], &temp[0], last_part * sizeof(double));
-
-                        wat_log(LOG_PANIC, "\nChannel 1 finished");
-                        if(wi->wav_header->num_channels == 2){
-                                sprintf(msg, "\n\nFFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
-                                wat_log(LOG_PANIC, msg);
-
-                                memset(temp, 0, sizeof(double) * 2 * NFFT + 1);
-                                memcpy(temp, &wi->right_fixed[i * freq], last_part * sizeof(double));
-                                four1(temp, NFFT, 1);
-                                sprintf(msg, "\n\nIFFT Less than a seconds, %.3f seconds missing, in Channel 2", (seconds - i));
-                                wat_log(LOG_PANIC, msg);
-                                four1(temp, NFFT, -1);
-                                divides_nfft(temp, NFFT);
-                                memcpy(&wi->right_fixed[i * freq], temp, last_part * sizeof(double));
-                        }
-                } 
-                else {
- */
+*/

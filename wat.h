@@ -7,6 +7,19 @@
 
 #define HEADER_SIZE 44
 
+#define BAND_MIN 0
+#define BAND_0  140
+#define BAND_1  360
+#define BAND_2  640
+#define BAND_3 1200
+#define BAND_4 2000
+#define BAND_5 6000
+#define BAND_6 12000
+#define BAND_7 24000
+#define BAND_8 28000
+#define BAND_9 32000
+#define BAND_MAX 44100
+
 typedef struct WavHeader{
 
         /* 4 bytes (0 - 4) */
@@ -40,6 +53,20 @@ typedef struct WavHeader{
 
 } WavHeader;
 
+typedef struct Factors{
+        float fac_0;
+        float fac_1;
+        float fac_2;
+        float fac_3;
+        float fac_4;
+        float fac_5;
+        float fac_6;
+        float fac_7;
+        float fac_8;
+        float fac_9;
+        float fac_10;
+} Factors;
+
 typedef struct Arguments{
 
         int print_data;
@@ -52,6 +79,7 @@ typedef struct Arguments{
         int print_nb_data;
         int nb_to_print;
         int fft;
+        float equalize;
 } Arguments;
 
 
@@ -79,6 +107,7 @@ typedef struct WavInput{
         unsigned char * buffer;
 
         Arguments *wat_args;
+        Factors *factors;
 
 } WavInput;
 
