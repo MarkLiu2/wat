@@ -1,18 +1,18 @@
-PROGRAM=wat
-MAIN=wat
-WAV_FILE=delicia.wav
-GDB=gdb
-GDB_FLAG=-g
-LOG=log
-DFT=dft
+PROGRAM = wat
+MAIN = wat
+GDB = gdb
+GDB_FLAG = -g
+LIBS += log.c
+LIBS += dft.c
+LIBS += benchmark.c
 
 .PHONY:$(PROGRAM)
 
-$(PROGRAM): $(MAIN).c $(LOG).c
-	cc -o $(PROGRAM) $(MAIN).c $(LOG).c $(DFT).c
+$(PROGRAM): $(MAIN).c $(LIBS)
+	cc -o $(PROGRAM) $(MAIN).c $(LIBS)
 
 $(GDB): $(MAIN.c)
-	cc -o $(PROGRAM) $(MAIN).c $(LOG).c $(DFT).c $(GDB_FLAG)
+	cc -o $(PROGRAM) $(MAIN).c $(LIBS) $(GDB_FLAG)
 
 run:
 	-./$(PROGRAM) $(ARG)

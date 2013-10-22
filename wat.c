@@ -2,6 +2,7 @@
 #include "string.h"
 #include <stdint.h>
 #include "dft.h"
+#include "benchmark.h"
 #include <math.h>
 
 WavInput * wav_input = NULL;
@@ -898,6 +899,7 @@ int run_dft(WavInput *wi, float seconds)
 
 int main(int argc, char **argv)
 {
+        int64_t tempo = wat_gettime()/1000;
         int ret;
 
         wav_input = (WavInput *)malloc(sizeof(WavInput));
@@ -945,7 +947,6 @@ int main(int argc, char **argv)
         if (ret < 0)
                 exit(0);
 
-
         ret = read_wav_data(wav_input);
 
         if(wav_input->wat_args->dft){
@@ -980,6 +981,8 @@ int main(int argc, char **argv)
         if(wav_input->wat_args->has_output)
                 save_file(wav_input);
 
+        tempo = wat_gettime()/1000 - tempo;
+        printf("\n\nTempo %ju", (intmax_t)tempo);
         printf("\n\nend\n");
         return 1;
 }
