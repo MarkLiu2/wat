@@ -6,3 +6,4 @@ wat.dSYM/
 .DS_Store
 status/
 *.out
+test_files
