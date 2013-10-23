@@ -1,1 +1,6 @@
-Learning how to read bytes of files in c.
+A simple equalizer in C using FFT.
+
+The goal of this equalizer is apply loop transformations and threads to get more efficience.
+More information about how to compile or use it will be here soon. 
+
+snk
