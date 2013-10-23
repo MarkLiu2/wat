@@ -1,10 +1,16 @@
 #include "wat.h"
 #include "string.h"
 #include <stdint.h>
+#include <math.h>
+
 #include "dft.h"
 #include "fft.h"
 #include "benchmark.h"
-#include <math.h>
+#include "utils.h"
+
+#ifdef HAVE_THREADS
+#include <pthread.h>
+#endif
 
 WavInput * wav_input = NULL;
 
@@ -688,8 +694,7 @@ int equalize44k(WavInput *wi, double *temp, int size)
 /* FFT ----------------------------------------------------------------------- */
 int run_fft(WavInput *wi, float seconds)
 {
-        int i, ret;
-        int test = 0;
+        int i;
         int freq = wi->wav_header->sample_rate;
         freq <<= 1;
         printf("\nfrequencia => %d", freq);
@@ -725,9 +730,9 @@ int run_fft(WavInput *wi, float seconds)
                         memset(temp, 0, sizeof(double) * array_size);
                         memcpy(temp, &wi->left_fixed[i * freq], last_part * sizeof(double));
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, 1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -741,9 +746,9 @@ int run_fft(WavInput *wi, float seconds)
                                 }
                         }
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, -1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -760,9 +765,9 @@ int run_fft(WavInput *wi, float seconds)
                                 memset(temp, 0, sizeof(double) * array_size);
                                 memcpy(temp, &wi->right_fixed[i * freq], last_part * sizeof(double));
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, 1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -780,9 +785,9 @@ int run_fft(WavInput *wi, float seconds)
                                                 equalizeXk(wi, temp, NFFT);
                                         }
                                 }
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, -1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -802,9 +807,9 @@ int run_fft(WavInput *wi, float seconds)
                         memset(temp, 0, sizeof(double) * array_size);
                         memcpy(temp, &wi->left_fixed[i * freq], freq * sizeof(double));
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, 1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -823,9 +828,9 @@ int run_fft(WavInput *wi, float seconds)
                                 }
                         }
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, -1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -849,9 +854,9 @@ int run_fft(WavInput *wi, float seconds)
                                 memset(temp, 0, sizeof(double) * array_size);
                                 memcpy(temp, &wi->right_fixed[i * freq], freq * sizeof(double));
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, 1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -872,9 +877,9 @@ int run_fft(WavInput *wi, float seconds)
                                         }
                                 }
 
-                        tempo = wat_gettime()/1000;
+                        tempo = wat_gettime();
                         four1(temp, NFFT, -1);
-                        tempo = wat_gettime()/1000 - tempo;
+                        tempo = wat_gettime() - tempo;
                         tempo_total += tempo;
                         it_tempo++;
                         printf("\n\nTempo %ju", (intmax_t)tempo);
@@ -965,7 +970,6 @@ int run_dft(WavInput *wi, float seconds)
 
 int main(int argc, char **argv)
 {
-        int64_t tempo = wat_gettime()/1000;
         int ret;
 
         wav_input = (WavInput *)malloc(sizeof(WavInput));
@@ -1046,6 +1050,8 @@ int main(int argc, char **argv)
 
         if(wav_input->wat_args->has_output)
                 save_file(wav_input);
+
+        printf("\n\nNumero de cores => %d", get_number_of_cores());
 
         printf("\n\nend\n");
         return 1;

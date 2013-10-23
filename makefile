@@ -10,6 +10,7 @@ LIBS += log.c
 LIBS += dft.c
 LIBS += benchmark.c
 LIBS += fft.c
+LIBS += utils.c
 
 .PHONY:$(PROGRAM)
 
