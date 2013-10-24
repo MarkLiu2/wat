@@ -12,6 +12,10 @@ LIBS += benchmark.c
 LIBS += fft.c
 LIBS += utils.c
 
+THREAD += -lpthread
+THREAD += -D
+THREAD += HAVE_THREADS
+
 .PHONY:$(PROGRAM)
 
 $(PROGRAM): $(MAIN).c $(LIBS)
@@ -19,6 +23,10 @@ $(PROGRAM): $(MAIN).c $(LIBS)
 
 $(GDB): $(MAIN.c)
 	cc -o $(PROGRAM) $(MAIN).c $(LIBS) $(GDB_FLAG)
+
+thread:
+	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) $(THREAD)
+
 
 clean:
 	$(RM) -R wat.dSYM/

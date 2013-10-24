@@ -82,6 +82,17 @@ typedef struct Arguments{
         float equalize;
 } Arguments;
 
+#ifdef HAVE_THREADS
+typedef struct WatThread{
+
+        int iterator;
+        double * buffer;
+        int flag;
+        int size;
+
+} WatThread;
+#endif
+
 
 typedef struct WavInput{
 
@@ -109,7 +120,22 @@ typedef struct WavInput{
         Arguments *wat_args;
         Factors *factors;
 
+#ifdef HAVE_THREADS
+        WatThread *wat_thread;
+#endif
 } WavInput;
+
+typedef struct s_fft{
+        WavInput * wi;
+        double * temp;
+        double * channel;
+        int it;
+        int freq;
+        int NFFT;
+        int array_size;
+        char *log;
+} s_fft;
+
 
 extern WavInput *wav_input;
 
