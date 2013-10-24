@@ -719,9 +719,9 @@ int channel_fft(s_fft *s)
                         }
                 }
 
-                four1(s->temp, s->NFFT, -1);
-
                 divides_nfft(s->temp, s->NFFT);
+
+                four1(s->temp, s->NFFT, -1);
 
                 memcpy(&s->channel[s->it * s->freq], s->temp, s->freq * sizeof(double));
 //                wat_log(LOG_PANIC, "\nmemcpy ch 1 DONE");
@@ -731,11 +731,9 @@ int channel_fft(s_fft *s)
 }
 
 #ifdef HAVE_THREADS
-void *fft_t(void *wt)
+void *fft_t(void *st)
 {
-        printf("\nThread Baby");
-        WatThread * t = (WatThread *)wt;
-        four1(t->buffer, t->size, t->flag);
+        channel_fft((s_fft *) st);
         return NULL;
 }
 #endif
@@ -743,12 +741,34 @@ void *fft_t(void *wt)
 int run_fft(WavInput *wi, float seconds)
 {
 #ifdef HAVE_THREADS
+        printf("\nThread Baby");
         pthread_t *fft_thread;
-        WatThread *wt;
         
         fft_thread = (pthread_t *)malloc(nb_thread * sizeof(pthread_t));
-        wt = (WatThread *)malloc(nb_thread * sizeof(WatThread));
-#endif
+        s_fft **s = (s_fft **)malloc(nb_thread * sizeof(s_fft *));
+
+        s[0] = (s_fft *)malloc(nb_thread * sizeof(s_fft));
+        s[1] = (s_fft *)malloc(nb_thread * sizeof(s_fft));
+
+        s[0]->log = s[1]->log = (char *)malloc(128 * sizeof(char));
+        s[0]->wi = wi;
+        s[1]->wi = wi;
+
+        s[0]->freq = wi->wav_header->sample_rate;
+        s[1]->freq = wi->wav_header->sample_rate;
+
+        s[0]->freq <<= 1;
+        s[1]->freq <<= 1;
+        printf("\nfrequencia => %d", s[0]->freq);
+        s[0]->NFFT = (int)pow(2.0, ceil(log((double)s[0]->freq)/log(2.0)));
+        s[1]->NFFT = (int)pow(2.0, ceil(log((double)s[0]->freq)/log(2.0)));
+        printf("\nNFFT = %d", s[0]->NFFT);
+        s[0]->array_size = 2 * s[0]->NFFT + 1;
+        s[1]->array_size = 2 * s[0]->NFFT + 1;
+
+        s[0]->temp = s[1]->temp = (double *)malloc(s[0]->array_size * sizeof(double));
+        wat_log(LOG_PANIC, "\n\nGoing to apply the FFT");
+#else
         s_fft *s = (s_fft *)malloc(sizeof(s_fft));
         s->log = (char *)malloc(128 * sizeof(char));
         s->wi = wi;
@@ -761,22 +781,49 @@ int run_fft(WavInput *wi, float seconds)
 
         s->temp = (double *)malloc(s->array_size * sizeof(double));
         wat_log(LOG_PANIC, "\n\nGoing to apply the FFT");
-
+#endif
         fix_data_to_fft(wi);
 
         int i;
-        for(i = 0; i < seconds; i++){
+        for(i = 0; i < floor(seconds); i++){
+#ifdef HAVE_THREADS
+                sprintf(s[0]->log, "\nTHREAD FFT %d of %f seconds, in Channel 1, in %d to %d", i, seconds, i * s[0]->freq, i * s[0]->freq + s[0]->freq);
+                wat_log(LOG_PANIC, s[0]->log);
+                s[0]->it = i;
+                s[0]->channel = wi->left_fixed;
+
+                pthread_create(&fft_thread[0], NULL, fft_t, s[0]);
+
+                if(wi->wav_header->num_channels == 2){
+                        sprintf(s[1]->log, "\nTHREAD FFT %d of %f seconds, in Channel 2, in %d to %d", i, seconds, i * s[1]->freq, i * s[1]->freq + s[1]->freq);
+                        wat_log(LOG_PANIC, s[1]->log);
+
+                        s[1]->channel = wi->right_fixed;
+
+                        pthread_create(&fft_thread[1], NULL, fft_t, s[1]);
+                        pthread_join(fft_thread[1], NULL);
+                }
+                pthread_join(fft_thread[0], NULL);
+
+#else
 
                 sprintf(s->log, "\nFFT %d of %f seconds, in Channel 1, in %d to %d", i, seconds, i * s->freq, i * s->freq + s->freq);
                 wat_log(LOG_PANIC, s->log);
+
+                s->it = i;
                 s->channel = wi->left_fixed;
+
                 channel_fft(s);
+
                 if(wi->wav_header->num_channels == 2){
                         sprintf(s->log, "\nFFT %d of %f seconds, in Channel 2, in %d to %d", i, seconds, i * s->freq, i * s->freq + s->freq);
                         wat_log(LOG_PANIC, s->log);
+
                         s->channel = wi->right_fixed;
+
                         channel_fft(s);
                 }
+#endif
         }
         back_data_to_normal(wi);
         return 1;
@@ -850,11 +897,12 @@ int run_dft(WavInput *wi, float seconds)
 int main(int argc, char **argv)
 {
         int ret;
+        char * msg = malloc(128 * sizeof(char)); 
 
         wav_input = (WavInput *)malloc(sizeof(WavInput));
 
 #ifdef HAVE_THREADS
-        wav_input->wat_thread = (WatThread *)malloc(sizeof(WatThread));
+//        wav_input->wat_thread = (WatThread *)malloc(sizeof(WatThread));
 #endif
 
         if(argc < 2){
@@ -873,30 +921,35 @@ int main(int argc, char **argv)
 
         /* getting the duration of audio */
         float seconds = 0;
-        if(wav_input->wat_args->dft_sec > 0){
-                seconds = wav_input->wat_args->dft_sec;
-                printf("\nUsing only %.2f seconds\n", seconds);
-        } else {
-                if(wav_input->wav_header->num_channels == 1){
-                        seconds = wav_input->wav_header->subchunk2_size 
-                                / wav_input->wav_header->sample_rate;
-                        seconds /= 2;
+        if(wav_input->wav_header->num_channels == 1){
+                seconds = wav_input->wav_header->subchunk2_size 
+                        / wav_input->wav_header->sample_rate;
+                seconds /= 2;
 
-                        char * msg = malloc(64 * sizeof(char)); 
-                        sprintf(msg, "\n\nDuration => %.3f seconds 1 ch\n", seconds);
-                        wat_log(LOG_INFO, msg);
-                }
-                else if(wav_input->wav_header->num_channels == 2){
-                        seconds = wav_input->wav_header->subchunk2_size 
-                                / wav_input->wav_header->sample_rate;
-                        seconds /= 4;
+                char * msg = malloc(64 * sizeof(char)); 
+                sprintf(msg, "\n\nDuration => %.3f seconds 1 ch\n", seconds);
+                wat_log(LOG_INFO, msg);
+        }
+        else if(wav_input->wav_header->num_channels == 2){
+                seconds = wav_input->wav_header->subchunk2_size 
+                        / wav_input->wav_header->sample_rate;
+                seconds /= 4;
 
-                        char * msg = malloc(64 * sizeof(char)); 
-                        sprintf(msg, "\n\nDuration => %.3f seconds, 2 ch\n", seconds);
-                        wat_log(LOG_INFO, msg);
-                }
+                sprintf(msg, "\n\nDuration => %.3f seconds, 2 ch\n", seconds);
+                wat_log(LOG_INFO, msg);
         }
 
+        if(wav_input->wat_args->dft_sec > 0){
+                if(wav_input->wat_args->dft_sec > seconds){
+                        sprintf(msg, "\nArgument -sec %d invalid, should be less than %f\n\n", 
+                                        wav_input->wat_args->dft_sec,  seconds);
+                        wat_log(LOG_INFO, msg);
+                        exit(1);
+                }
+                seconds = wav_input->wat_args->dft_sec;
+                printf("\nUsing only %.2f seconds\n", seconds);
+        }
+ 
         if (ret < 0)
                 exit(0);
 
@@ -908,7 +961,10 @@ int main(int argc, char **argv)
         else if(wav_input->wat_args->fft){
                 int last_part = wav_input->nb_samples;
                 printf("\nmain nb_samples= %d", last_part);
+                uint32_t tempo = wat_gettime();
                 run_fft(wav_input, seconds);
+                tempo = wat_gettime() - tempo;
+                printf("\nTempo em run_fft = %ju", (intmax_t)tempo);
         }
 
 
