@@ -29,6 +29,7 @@ void help()
                         " before dft.");
         printf("\n\t-p <nb secondes>     Print nb seconds of data after dft");
         printf("\n\t-fft                 Run FFT in input file.");
+        printf("\n\t-times <int>         Run FFT <int> times");
         printf("\n\t-dft                 Run DFT in input file.");
         printf("\n\t-sec <int>           Run DFT only in <int> seconds");
         printf("\n\t-log_level=<level>   Define the level of logging, can be"
@@ -332,6 +333,7 @@ int parse_args(WavInput *wi, int argc, char **argv)
         wi->wat_args->dft = 0;
         wi->wat_args->dft_sec = 0;
         wi->wat_args->fft = 0;
+        wi->wat_args->n_times = 1;
         wi->wat_args->equalize = 0;
         wi->wat_args->one_channel = 0;
 
@@ -384,6 +386,10 @@ int parse_args(WavInput *wi, int argc, char **argv)
                 }
                 else if(strcmp(argv[i], "-fft") == 0){
                         wi->wat_args->fft = 1;
+                }
+                else if(strcmp(argv[i], "-times") == 0){
+                        wi->wat_args->n_times = atoi(argv[i + 1]);
+                        i++;
                 }
                 else if(strcmp(argv[i], "-log_level=INFO") == 0){
                         set_log_level(LOG_ERROR);
@@ -1008,14 +1014,18 @@ int main(int argc, char **argv)
 
         ret = read_wav_data(wav_input);
 
+        int n_times = wav_input->wat_args->n_times;
+        uint32_t * samples = calloc(n_times, sizeof(uint32_t));
+        int i;
         if(wav_input->wat_args->dft){
                 run_dft(wav_input, seconds);
         }
         else if(wav_input->wat_args->fft){
-                uint32_t tempo = wat_gettime();
-                run_fft(wav_input, seconds);
-                tempo = wat_gettime() - tempo;
-                printf("\nTempo em run_fft = %ju", (intmax_t)tempo);
+               for(i = 0; i < n_times; i++){
+                        samples[i] = wat_gettime();
+                        run_fft(wav_input, seconds);
+                        samples[i] = wat_gettime() - samples[i];
+                }
         }
 
 
@@ -1041,6 +1051,14 @@ int main(int argc, char **argv)
         if(wav_input->wat_args->has_output)
                 save_file(wav_input);
 
+        if(wav_input->wat_args->fft){
+                printf("\n\n\tBenchmark of %d rounds\n", n_times);
+                for(i = 0; i < n_times; i++){
+                        printf("\nRound %d => %ju", i+1, (intmax_t)samples[i]);
+                }
+
+                statistics(samples, n_times);
+        }
         printf("\n\nend\n");
         return 1;
 }

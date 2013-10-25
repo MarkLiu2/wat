@@ -87,6 +87,7 @@ typedef struct Arguments{
         int print_nb_data;
         int nb_to_print;
         int fft;
+        int n_times;
         int one_channel;
         float equalize;
 
