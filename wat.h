@@ -53,6 +53,13 @@ typedef struct WavHeader{
 
 } WavHeader;
 
+/*
+ * Factors 
+ * for which band of frequence
+ * is calculated a factor based on the 
+ * value passed by parameter (-eq <value>)
+ * to be used in equalization
+ */
 typedef struct Factors{
         float fac_0;
         float fac_1;
@@ -69,17 +76,20 @@ typedef struct Factors{
 
 typedef struct Arguments{
 
+        int argc;
+        char **argv;
         int print_data;
         int dft;
         int dft_sec;
-        int print_help;
         int has_input;
         int has_output;
         int print_hexa_data;
         int print_nb_data;
         int nb_to_print;
         int fft;
+        int one_channel;
         float equalize;
+
 } Arguments;
 
 typedef struct WavInput{
@@ -108,9 +118,20 @@ typedef struct WavInput{
         Arguments *wat_args;
         Factors *factors;
 
+#ifdef HAVE_THREADS
+        long nb_thread;
+#endif
+
 } WavInput;
 
-typedef struct s_fft{
+/* 
+ * s_fft of struct_fft 
+ * 
+ * is only used in wat.c and carry on all 
+ * data needed to call the FFT function.
+ *
+ */
+struct s_fft{
         WavInput * wi;
         double * temp;
         double * channel;
@@ -119,6 +140,11 @@ typedef struct s_fft{
         int NFFT;
         int array_size;
         char *log;
+
+#ifdef HAVE_THREADS
+        int tid;
+#endif
+
 } s_fft;
 
 
