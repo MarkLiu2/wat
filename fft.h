@@ -3,6 +3,6 @@
 
 #include "log.h"
 
-void four1(double data[], int nn, int isign);
+void pick_fft(double data[], int nn, int isign);
 
 #endif

@@ -725,21 +725,29 @@ void equalize(struct s_fft *s)
 
 int channel_fft(struct s_fft *s)
 {
+//        uint32_t * samples = calloc(2, sizeof(uint32_t));
 #ifdef HAVE_THREADS
 //        printf("\ns->it = %d\tthread = %d", s->it, s->tid);
 #endif
+
         memset(s->temp, 0, sizeof(double) * s->array_size);
         memcpy(s->temp, &s->channel[s->it * s->freq], s->freq * sizeof(double));
 
-        four1(s->temp, s->NFFT, 1);
+//        samples[0] = wat_gettime();
+        pick_fft(s->temp, s->NFFT, 1);
+//        samples[0] = wat_gettime() - samples[0];
 
         equalize(s);
 
-        four1(s->temp, s->NFFT, -1);
+//        samples[1] = wat_gettime();
+        pick_fft(s->temp, s->NFFT, -1);
+//        samples[1] = wat_gettime() - samples[1];
 
         divides_nfft(s->temp, s->NFFT);
 
         memcpy(&s->channel[s->it * s->freq], s->temp, s->freq * sizeof(double));
+
+//        statistics(samples, 2);
 
         return 1;
 }
@@ -863,26 +871,51 @@ int run_fft(WavInput *wi, float seconds)
 
         wat_log(LOG_PANIC, "\n\nGoing to apply the FFT");
 
+        int nb_samples = sec;
+
+        uint32_t *samples_ch1 = calloc(nb_samples, sizeof(uint32_t));
+        uint32_t * samples_ch2 = NULL;
+        if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0)
+                samples_ch2 = calloc(nb_samples, sizeof(uint32_t));
 
         for(i = 0; i < floor(sec); i++){
 
-                sprintf(s->log, "\nFFT %d of %d seconds, in Channel 1, in %d to %d", i, sec, i * s->freq, i * s->freq + s->freq);
+                sprintf(s->log, "\nFFT %d of %d seconds, in Channel 1,"
+                                " in %d to %d", 
+                                i, 
+                                sec, 
+                                i * s->freq, 
+                                i * s->freq + s->freq);
                 wat_log(LOG_PANIC, s->log);
 
                 s->it = i;
                 s->channel = wi->left_fixed;
 
+                samples_ch1[i] = wat_gettime();
                 channel_fft(s);
+                samples_ch1[i] = wat_gettime() - samples_ch1[i];
 
                 if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0){
-                        sprintf(s->log, "\nFFT %d of %d seconds, in Channel 2, in %d to %d", i, sec, i * s->freq, i * s->freq + s->freq);
+                        sprintf(s->log, "\nFFT %d of %d seconds, in Channel 2,"
+                                        " in %d to %d", 
+                                        i, 
+                                        sec, 
+                                        i * s->freq, 
+                                        i * s->freq + s->freq);
                         wat_log(LOG_PANIC, s->log);
 
                         s->channel = wi->right_fixed;
 
+                        samples_ch2[i] = wat_gettime();
                         channel_fft(s);
+                        samples_ch2[i] = wat_gettime() - samples_ch2[i];
                 }
         }
+
+        statistics(samples_ch1, nb_samples);
+        if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0)
+                statistics(samples_ch2, nb_samples);
+
         back_data_to_normal(wi);
         return 1;
 #endif //HAVE_THREADS
@@ -1028,21 +1061,12 @@ int main(int argc, char **argv)
                 }
         }
 
-
         if(ret < 0){
                 exit(4);
         }
 
         if(wav_input->wat_args->print_data)
                 ret = print_wav_data(wav_input);
-
-        if(ret < 0){
-                exit(4);
-        }
-
-        if(wav_input->wat_args->print_nb_data){
-        
-        }
 
         if(ret < 0){
                 exit(4);

@@ -6,6 +6,8 @@ GDB_FLAG = -g
 CC = cc
 CC_FLAGS = -Wall
 
+OPT_FLAGS = -Ofast
+
 LIBS += log.c
 LIBS += dft.c
 LIBS += benchmark.c
@@ -26,6 +28,17 @@ $(GDB): $(MAIN.c)
 
 thread:
 	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) $(THREAD)
+
+fast:
+	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) $(OPT_FLAGS) 
+
+fission:
+	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) -D FISSION -D FISSION_V1
+
+fission2:
+	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) -D FISSION -D FISSION_V2
+
+
 
 
 clean:
