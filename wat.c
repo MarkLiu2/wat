@@ -37,6 +37,7 @@ void help()
         printf("\n\t-eq <float>          Equalize audio with main factor <float>");
         printf("\n\t-one-channel         Will apply fft in only left channel");
         printf("\n\t-nt <int>            Choose the number of threads is using it");
+        printf("\n\t-r <int>             Raise the size of wav file in <int> times");
 
         printf("\n\n");
 }
@@ -116,6 +117,31 @@ int read_header_file(WavHeader * wh, char *file_name)
         printf("\nsubchunk2_size => %d", wh->subchunk2_size);
 
         wat_log(LOG_PANIC, "\n\nHeader printed.");
+        return 1;
+}
+
+int write_header(WavHeader *wh, FILE *f)
+{
+        wat_log(LOG_PANIC, "\nwrite_header");
+
+        fwrite(wh->chunk_id, sizeof(char), 4, f);
+        fwrite(&wh->chunk_size, sizeof(int), 1, f);
+        fwrite(wh->format, sizeof(char), 4, f);
+
+        fwrite(wh->subchunk1_id, sizeof(char), 4, f);
+        fwrite(&wh->subchunk1_size, sizeof(int), 1, f);
+        fwrite(&wh->audio_format, sizeof(short int), 1, f);
+        fwrite(&wh->num_channels, sizeof(short int), 1, f);
+        fwrite(&wh->sample_rate, sizeof(int), 1, f);
+        fwrite(&wh->byte_rate, sizeof(int), 1, f);
+        fwrite(&wh->block_align, sizeof(short int), 1, f);
+        fwrite(&wh->bits_per_sample, sizeof(short int), 1, f);
+
+        fwrite(wh->subchunk2_id, sizeof(char), 4, f);
+        fwrite(&wh->subchunk2_size, sizeof(int), 1, f);
+
+        wat_log(LOG_PANIC, "\nwrite_header DONE\n");
+
         return 1;
 }
 
@@ -336,6 +362,7 @@ int parse_args(WavInput *wi, int argc, char **argv)
         wi->wat_args->n_times = 1;
         wi->wat_args->equalize = 0;
         wi->wat_args->one_channel = 0;
+        wi->wat_args->raise = 0;
 
 #ifdef HAVE_THREADS
         wi->nb_thread = get_number_of_cores();
@@ -374,6 +401,10 @@ int parse_args(WavInput *wi, int argc, char **argv)
                 }
                 else if(strcmp(argv[i], "-one-channel") == 0){
                         wi->wat_args->one_channel = 1;
+                }
+                else if(strcmp(argv[i], "-r") == 0){
+                        wi->wat_args->raise = atoi(argv[i + 1]);
+                        i++;
                 }
                 else if(strcmp(argv[i], "-eq") == 0){
                         wi->wat_args->equalize = atof(argv[i + 1]);
@@ -510,6 +541,11 @@ int convert_double_to_short(WavInput *wi)
 int save_file(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nIn save_file");
+
+        if(wi->wat_args->raise != 0){
+                raise_wav_file(wi);
+        }
+       
         char * msg = malloc(128 * sizeof(char));
         FILE *f;
 
@@ -523,23 +559,7 @@ int save_file(WavInput *wi)
 
         WavHeader * wh = wi->wav_header;
 
-        fwrite(wh->chunk_id, sizeof(char), 4, f);
-        fwrite(&wh->chunk_size, sizeof(int), 1, f);
-        fwrite(wh->format, sizeof(char), 4, f);
-
-        fwrite(wh->subchunk1_id, sizeof(char), 4, f);
-        fwrite(&wh->subchunk1_size, sizeof(int), 1, f);
-        fwrite(&wh->audio_format, sizeof(short int), 1, f);
-        fwrite(&wh->num_channels, sizeof(short int), 1, f);
-        fwrite(&wh->sample_rate, sizeof(int), 1, f);
-        fwrite(&wh->byte_rate, sizeof(int), 1, f);
-        fwrite(&wh->block_align, sizeof(short int), 1, f);
-        fwrite(&wh->bits_per_sample, sizeof(short int), 1, f);
-
-        fwrite(wh->subchunk2_id, sizeof(char), 4, f);
-        fwrite(&wh->subchunk2_size, sizeof(int), 1, f);
-
-        wat_log(LOG_PANIC, "\nheader saved");
+        write_header(wh, f);
 
         convert_double_to_short(wi);
 

@@ -90,6 +90,7 @@ typedef struct Arguments{
         int n_times;
         int one_channel;
         float equalize;
+        int raise;
 
 } Arguments;
 
@@ -151,5 +152,6 @@ struct s_fft{
 
 extern WavInput *wav_input;
 
+int convert_double_to_short(WavInput *wi);
 
 #endif
