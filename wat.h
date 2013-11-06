@@ -85,7 +85,7 @@ typedef struct Arguments{
         int has_output;
         int print_hexa_data;
         int print_nb_data;
-        int nb_to_print;
+        int benchmark;
         int fft;
         int n_times;
         int one_channel;

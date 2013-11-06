@@ -5,6 +5,7 @@ GDB_FLAG = -g
 
 CC = cc
 CC_FLAGS = -Wall
+n = 1
 
 OPT_FLAGS = -Ofast
 
@@ -37,6 +38,17 @@ fission:
 
 fission2:
 	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) -D FISSION -D FISSION_V2
+
+wat_fission:
+	$(CC) -o $(PROGRAM) $(MAIN).c $(LIBS) $(CC_FLAGS) -D WAT_FISSION
+
+breno400:
+	-./$(PROGRAM) -i _r_esperando.wav > _benchmark400.txt -b $(n)
+
+breno40:
+	-./$(PROGRAM) -i esperando.wav > _benchmark40.txt -b $(n)
+
+
 
 
 

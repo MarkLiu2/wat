@@ -13,18 +13,8 @@ int64_t wat_gettime()
 void statistics(uint32_t *samples, int size)
 {
         int i;
-        int avg = 1;
-
-        for(i = 0; i < size; i++)
-                avg *= samples[i];
-
-        avg /= size;
-        printf("\n\nNoobie => %d ms", avg);
-
-        printf("\n\nGeometric => geometric mean ");
+        printf("\n\nGeometric Mean => ");
         printf(" %d", samples[0]);
         for(i = 1; i < size; i++)
                 printf(",%d ",samples[i]);
-
-
 }

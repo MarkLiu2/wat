@@ -27,7 +27,7 @@ void help()
         printf("\n\t-o <output file>     Imput file.");
         printf("\n\t-d                   Print data of input file after and"
                         " before dft.");
-        printf("\n\t-p <nb secondes>     Print nb seconds of data after dft");
+        printf("\n\t-b <int>             Run <int> times to benchmark.");
         printf("\n\t-fft                 Run FFT in input file.");
         printf("\n\t-times <int>         Run FFT <int> times");
         printf("\n\t-dft                 Run DFT in input file.");
@@ -193,6 +193,7 @@ double bytes_to_double(uint8_t first, uint8_t second)
         return data;// / 32768.0;
 }
 
+/* snk */
 int read_wav_data(WavInput * wi)
 {
         wat_log(LOG_PANIC, "\nIn read_wav_data\n");
@@ -244,6 +245,261 @@ int read_wav_data(WavInput * wi)
 
         long int i = 0;
         long int it = 0;
+
+#ifdef WAT_FISSION
+
+        int b;
+        int nb;
+        if(wi->wat_args->benchmark == 0)
+                nb = 1;
+        else 
+                nb = wi->wat_args->benchmark;
+        printf("\nBenchmark set as %d\n", nb);
+
+        uint32_t * sample_reordering = (uint32_t *)calloc(nb, sizeof(uint32_t));
+        uint32_t * sample_unswiting = (uint32_t *)calloc(nb, sizeof(uint32_t));
+        uint32_t * sample_re_unswi = (uint32_t *)calloc(nb, sizeof(uint32_t));
+        uint32_t * sample_fission = (uint32_t *)calloc(nb, sizeof(uint32_t));
+        uint32_t * sample_normal = (uint32_t *)calloc(nb, sizeof(uint32_t));
+
+/******************************************************************************/
+/* REORDERING */
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+
+                sample_reordering[b] = wat_gettime();
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        if(wi->wav_header->num_channels == 2){
+                                wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                                it+=2;
+                        }
+                        i++;
+                }
+                sample_reordering[b] = wat_gettime() - sample_reordering[b];
+                printf("\nreordering = %d", sample_reordering[b]);
+        }
+
+        printf("\n\n");
+/******************************************************************************/
+/* UNSWITING */
+
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+
+                sample_unswiting[b] = wat_gettime();
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it+=2;
+                        i++;
+                }
+                sample_unswiting[b] = wat_gettime() - sample_unswiting[b];
+                printf("\nunswiting = %d", sample_unswiting[b]);
+        }
+
+        printf("\n\n");
+/******************************************************************************/
+/* REORDERING + UNSWITING */
+
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+
+                sample_re_unswi[b] = wat_gettime();
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                sample_re_unswi[b] = wat_gettime() - sample_re_unswi[b];
+                printf("\nreordering + unswiting = %d", sample_re_unswi[b]);
+        }
+
+        printf("\n\n");
+/******************************************************************************/
+/* FISSION + re_unswi */
+
+        int size = 10;
+        int fission_size = wi->wav_header->subchunk2_size / size;
+        int slice;
+        int fstep;
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+                fstep = 1;
+
+                sample_fission[b] = wat_gettime();
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+
+                sample_fission[b] = wat_gettime() - sample_fission[b];
+                printf("\nfission = %d", sample_fission[b]);
+        }
+
+        printf("\n\n");
+/******************************************************************************/
+/* NORMAL */
+
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+
+                sample_normal[b] = wat_gettime();
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        if(wi->wav_header->num_channels == 2){
+                                wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                                it+=2;
+                        }
+                        i++;
+                }
+                sample_normal[b] = wat_gettime() - sample_normal[b];
+                printf("\ntempo normal = %d", sample_normal[b]);
+        }
+        printf("\n\n");
+/******************************************************************************/
+
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_reordering");
+        statistics(sample_reordering, nb);
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_unswiting");
+        statistics(sample_unswiting, nb);
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_re_unswi");
+        statistics(sample_re_unswi, nb);
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_fission");
+        statistics(sample_fission, nb);
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_normal");
+        statistics(sample_normal, nb);
+        printf("\n===============================================================");
+
+        printf("\n\n");
+/******************************************************************************/
+
+#else 
+        uint32_t sample = wat_gettime();
+
         while(it < wi->wav_header->subchunk2_size){
                 wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
                 wi->zero_data[i] = 0;
@@ -254,7 +510,11 @@ int read_wav_data(WavInput * wi)
                 }
                 i++;
         }
+        sample = wat_gettime() - sample;
+        printf("\n\ntempo normal = %d\n\n", sample);
+#endif
 
+        exit(1);
 
         char msg[50];
         sprintf(msg, "\n read_wav_data DONE, ret = %d", ret);
@@ -354,8 +614,7 @@ int parse_args(WavInput *wi, int argc, char **argv)
         wi->wat_args->argv = argv;
         wi->wat_args->has_input = 0;
         wi->wat_args->has_output = 0;
-        wi->wat_args->print_nb_data = 0;
-        wi->wat_args->nb_to_print = 0;
+        wi->wat_args->benchmark = 0;
         wi->wat_args->dft = 0;
         wi->wat_args->dft_sec = 0;
         wi->wat_args->fft = 0;
@@ -390,9 +649,8 @@ int parse_args(WavInput *wi, int argc, char **argv)
                         wi->output_file = argv[i + 1];
                         i++;
                 }
-                else if(strcmp(argv[i], "-p") == 0){
-                        wi->wat_args->print_nb_data = 1;
-                        wi->wat_args->nb_to_print = atoi(argv[i + 1]);
+                else if(strcmp(argv[i], "-b") == 0){
+                        wi->wat_args->benchmark = atoi(argv[i + 1]);
                         i++;
                 }
                 else if(strcmp(argv[i], "-sec") == 0){
@@ -1106,3 +1364,15 @@ int main(int argc, char **argv)
         printf("\n\nend\n");
         return 1;
 }
+/*
+ 
+uint32_t sample = wat_gettime();
+metodo
+sample = wat_gettime() - sample;
+printf("\n\ntempo = %d\n\n", sample);
+
+Com otimização => 9368.38
+
+Sem otimização => 9655.30
+
+*/
