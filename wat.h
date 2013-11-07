@@ -1,6 +1,7 @@
 #ifndef WAT_H
 #define WAT_H
 
+#include "string.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include "log.h"
@@ -78,19 +79,16 @@ typedef struct Arguments{
 
         int argc;
         char **argv;
-        int print_data;
-        int dft;
-        int dft_sec;
         int has_input;
         int has_output;
-        int print_hexa_data;
-        int print_nb_data;
         int benchmark;
         int fft;
         int n_times;
         int one_channel;
         float equalize;
         int raise;
+        int print_header;
+        int only_sec;
 
 } Arguments;
 
