@@ -18,6 +18,11 @@ WavInput * wav_input = NULL;
 uint32_t tempo_total = 0;
 int it_tempo = 0;
 
+int min(int a, int b)
+{
+        return a < b ? a : b;
+}
+
 void help()
 {
         printf("\n\tWAT");
@@ -97,6 +102,7 @@ int read_header_file(WavHeader * wh, char *file_name)
         wat_log(LOG_PANIC, "\nRead all header infos, printing than now.");
 
         /* print header infos */
+        /*
         printf("\n\nHeader of wav file:\n");
         printf("\nchunk_id => %s", wh->chunk_id);
         printf("\nchunk_size => %d", wh->chunk_size);
@@ -117,6 +123,7 @@ int read_header_file(WavHeader * wh, char *file_name)
         printf("\nsubchunk2_size => %d", wh->subchunk2_size);
 
         wat_log(LOG_PANIC, "\n\nHeader printed.");
+        */
         return 1;
 }
 
@@ -498,8 +505,7 @@ int read_wav_data(WavInput * wi)
 /******************************************************************************/
 
 #else 
-        uint32_t sample = wat_gettime();
-
+#ifdef ORIG 
         while(it < wi->wav_header->subchunk2_size){
                 wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
                 wi->zero_data[i] = 0;
@@ -510,11 +516,180 @@ int read_wav_data(WavInput * wi)
                 }
                 i++;
         }
-        sample = wat_gettime() - sample;
-        printf("\n\ntempo normal = %d\n\n", sample);
-#endif
+#endif //ORIG
 
+#ifdef ORIG_B
+        int b;
+        int nb;
+        if(wi->wat_args->benchmark == 0)
+                nb = 1;
+        else 
+                nb = wi->wat_args->benchmark;
+        printf("\nBenchmark set as %d\n", nb);
+
+        uint32_t * sample_orig_b = (uint32_t *)calloc(nb, sizeof(uint32_t));
+
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+
+                sample_orig_b[b] = wat_gettime();
+
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        if(wi->wav_header->num_channels == 2){
+                                wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                                it+=2;
+                        }
+                        i++;
+                }
+                sample_orig_b[b] = wat_gettime() - sample_orig_b[b];
+                printf("\noriginal = %d", sample_orig_b[b]);
+        }        
+
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_orig_b");
+        statistics(sample_orig_b, nb);
+        printf("\n===============================================================\n\n");
+
+#endif //ORIG_B
+
+#ifdef STRIP
+        int b;
+        int nb;
+        int strip_size = 331 * 4;
+
+        if(wi->wat_args->benchmark == 0)
+                nb = 1;
+        else 
+                nb = wi->wat_args->benchmark;
+        printf("\nBenchmark set as %d\n", nb);
+
+        int array_size = wi->wav_header->subchunk2_size;
+        uint32_t * sample_strip = (uint32_t *)calloc(nb, sizeof(uint32_t));
+
+        printf("\narray_size = %d", array_size);
+        int j;
+        int max;
+        for(b = 0; b < nb; b++){
+                i = 0;
+                sample_strip[b] = wat_gettime();
+
+                for(j = 0; j < array_size; j += strip_size){
+                        for(it = j; it < (array_size < j + strip_size ? array_size : j + strip_size); it += 4){
+                                wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                                wi->zero_data[i] = 0;
+                                wi->right_side[i] = (double)((buffer[it + 3] << 8) + buffer[it + 2]);
+                                i++;
+                        }
+                }
+
+                sample_strip[b] = wat_gettime() - sample_strip[b];
+                printf("\nstrip = %d", sample_strip[b]);
+        }
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_strip");
+        statistics(sample_strip, nb);
+        printf("\n===============================================================\n\n");
+#endif //STRIP
+
+#ifdef OPT
+        int b;
+        int nb;
+        if(wi->wat_args->benchmark == 0)
+                nb = 1;
+        else 
+                nb = wi->wat_args->benchmark;
+        printf("\nBenchmark set as %d\n", nb);
+
+        int array_size = wi->wav_header->subchunk2_size;
+        uint32_t * sample_re_unswi = (uint32_t *)calloc(nb, sizeof(uint32_t));
+
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+
+                sample_re_unswi[b] = wat_gettime();
+                while(it < array_size){
+                //while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                sample_re_unswi[b] = wat_gettime() - sample_re_unswi[b];
+                printf("\nreordering + unswiting = %d", sample_re_unswi[b]);
+        }
+        printf("\n===============================================================");
+        printf("\n\nStatistics to sample_re_unswi");
+        statistics(sample_re_unswi, nb);
+        printf("\n===============================================================\n\n");
+ 
+#endif //OPT
+
+#ifdef R_FISSION
+        int b;
+        int nb;
+        if(wi->wat_args->benchmark == 0)
+                nb = 1;
+        else 
+                nb = wi->wat_args->benchmark;
+        printf("\nBenchmark set as %d\n", nb);
+
+        uint32_t * sample_fission = (uint32_t *)calloc(nb, sizeof(uint32_t));
+
+        int size = 2;
+        int fission_size = wi->wav_header->subchunk2_size / size;
+        int slice;
+        int fstep;
+        for(b = 0; b < nb; b++){
+                i = 0;
+                it = 0;
+                fstep = 1;
+
+                sample_fission[b] = wat_gettime();
+
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+                slice = fission_size * fstep;
+                while(it < slice){
+                        wi->left_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = (double)((buffer[it + 1] << 8) + buffer[it]);
+                        it+=2;
+                        i++;
+                }
+                fstep++;
+
+
+                sample_fission[b] = wat_gettime() - sample_fission[b];
+                printf("\nfission = %d", sample_fission[b]);
+        }
+        printf("\n\n===============================================================");
+        printf("\n\nStatistics to sample_fission");
+        statistics(sample_fission, nb);
+        printf("\n===============================================================\n\n");
+ 
+#endif //R_FISSION
+
+#endif //WAT_FISSION
+
+#ifndef GO
         exit(1);
+#endif //GO
 
         char msg[50];
         sprintf(msg, "\n read_wav_data DONE, ret = %d", ret);
