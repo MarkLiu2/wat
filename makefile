@@ -7,7 +7,7 @@ CC = cc
 CC_FLAGS = -Wall
 
 n = 1
-ARG = FOO
+ARG = NONE
 
 OPT_FLAGS = -Ofast
 
@@ -39,39 +39,24 @@ $(OBJ): fft.c
 fast:
 	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) $(OPT_FLAGS) -D GO
 
-fission:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D FISSION -D FISSION_V1 -D $(ARG)
 
-fission2:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D FISSION -D FISSION_V2 -D $(ARG)
-
-wat_fission:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D WAT_FISSION -D $(ARG)
-
+#==============================================================================#
+# OPTIMIZATIONS #
 
 opt:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D OPT  -D $(ARG)
+	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) -D OPT  -D $(ARG)
 
 
 orig:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D ORIG_B -D $(ARG)
+	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) -D ORIG_B -D $(ARG)
 
 
-r_fission:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D R_FISSION -D $(ARG)
+fission:
+	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) -D FISSION -D $(ARG)
 
 
-strip:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D STRIP -D $(ARG)
-
-
-
-
-breno400:
-	-./$(PROGRAM) -i _r_esperando.wav > _benchmark400.txt -b $(n) -D $(ARG)
-
-breno40:
-	-./$(PROGRAM) -i esperando.wav > _benchmark40.txt -b $(n) -D $(ARG)
+# OPTIMIZATIONS #
+#==============================================================================#
 
 clean:
 	$(RM) -R wat.dSYM/
