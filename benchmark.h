@@ -5,6 +5,6 @@
 
 int64_t wat_gettime();
 
-void statistics(uint32_t *samples, int size);
+int statistics(uint32_t *samples, int size, char *name);
 
 #endif

@@ -7,13 +7,14 @@
 #include "fft_original.c"
 #include "fft_fission.c"
 
-void pick_fft(double data[], int nn, int isign)
+uint32_t pick_fft(double data[], int nn, int isign)
 {
 #if defined(FISSION) || defined(OPT)
-        fission_fft(data, nn, isign);
+        return fission_fft(data, nn, isign);
 #endif
 
 #if defined(ORIG) || defined(ORIG_B)
-        original_fft(data, nn, isign);
+        return original_fft(data, nn, isign);
 #endif
+        return -1;
 }

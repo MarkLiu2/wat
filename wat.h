@@ -140,6 +140,9 @@ struct s_fft{
         int NFFT;
         int array_size;
         char *log;
+        int it_max;
+        int num_channels;
+        int this_channel;
 
 #ifdef HAVE_THREADS
         int tid;

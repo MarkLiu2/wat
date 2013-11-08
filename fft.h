@@ -2,7 +2,8 @@
 #define FFT_H
 
 #include "log.h"
+#include <stdint.h>
 
-void pick_fft(double data[], int nn, int isign);
+uint32_t pick_fft(double data[], int nn, int isign);
 
 #endif

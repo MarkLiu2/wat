@@ -16,11 +16,14 @@
 WavInput * wav_input = NULL;
 
 int bench_nb = 1;
+
 uint32_t bench_equalize = 0;
 uint32_t bench_fix_data = 0;
 uint32_t bench_read_data = 0;
 uint32_t bench_back_data = 0;
 uint32_t bench_convert_double = 0;
+
+uint32_t *bench_fft_1;
 
 
 int equalize44k(WavInput *wi, double *temp, int size);
@@ -1130,6 +1133,7 @@ void equalize(struct s_fft *s)
 
 int channel_fft(struct s_fft *s)
 {
+        int pos;
 //        uint32_t * samples = calloc(2, sizeof(uint32_t));
 #ifdef HAVE_THREADS
 //        printf("\ns->it = %d\tthread = %d", s->it, s->tid);
@@ -1139,13 +1143,15 @@ int channel_fft(struct s_fft *s)
         memcpy(s->temp, &s->channel[s->it * s->freq], s->freq * sizeof(double));
 
 //        samples[0] = wat_gettime();
-        pick_fft(s->temp, s->NFFT, 1);
+
+        pos = ((s->it_max * s->num_channels) * (s->this_channel - 1)) + (2 * s->it);
+        bench_fft_1[pos] = pick_fft(s->temp, s->NFFT, 1);
 //        samples[0] = wat_gettime() - samples[0];
 
         equalize(s);
 
 //        samples[1] = wat_gettime();
-        pick_fft(s->temp, s->NFFT, -1);
+        bench_fft_1[pos + 1] = pick_fft(s->temp, s->NFFT, -1);
 //        samples[1] = wat_gettime() - samples[1];
 
         divides_nfft(s->temp, s->NFFT);
@@ -1278,10 +1284,20 @@ int run_fft(WavInput *wi, float seconds)
 
         int nb_samples = sec;
 
+        s->it_max = nb_samples;
+
         uint32_t *samples_ch1 = calloc(nb_samples, sizeof(uint32_t));
         uint32_t * samples_ch2 = NULL;
-        if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0)
+
+        if(wi->wav_header->num_channels == 1 || wi->wat_args->one_channel == 1){
+                bench_fft_1 = (uint32_t *)calloc(nb_samples * 2, sizeof(uint32_t));
+                s->num_channels = 1;
+        }
+        else if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0){
                 samples_ch2 = calloc(nb_samples, sizeof(uint32_t));
+                bench_fft_1 = (uint32_t *)calloc(nb_samples * 4, sizeof(uint32_t));
+                s->num_channels = 2;
+        }
 
         for(i = 0; i < floor(sec); i++){
 
@@ -1294,6 +1310,7 @@ int run_fft(WavInput *wi, float seconds)
                 wat_log(LOG_PANIC, s->log);
 
                 s->it = i;
+                s->this_channel = 1;
                 s->channel = wi->left_fixed;
 
                 samples_ch1[i] = wat_gettime();
@@ -1310,6 +1327,7 @@ int run_fft(WavInput *wi, float seconds)
                         wat_log(LOG_PANIC, s->log);
 
                         s->channel = wi->right_fixed;
+                        s->this_channel = 2;
 
                         samples_ch2[i] = wat_gettime();
                         channel_fft(s);
@@ -1318,9 +1336,15 @@ int run_fft(WavInput *wi, float seconds)
         }
 
 //        wat_log(LOG_BENCH, "\nStatistics of run_fft");
-        statistics(samples_ch1, nb_samples);
-        if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0)
-                statistics(samples_ch2, nb_samples);
+        statistics(samples_ch1, nb_samples, "run_fft_ch1");
+        if(wi->wav_header->num_channels == 1 || wi->wat_args->one_channel == 1){
+                statistics(bench_fft_1, nb_samples * 2, "bench_fft_1");
+        }
+        else if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0){
+                statistics(samples_ch2, nb_samples, "run_fft_ch2");
+                statistics(bench_fft_1, nb_samples * 4, "bench_fft_1");
+        }
+
 
         back_data_to_normal(wi);
         wat_log(LOG_PANIC, "\nrun_fft, DONE.");
@@ -1388,46 +1412,46 @@ int main(int argc, char **argv)
                 sprintf(msg, "\nUsing only %.2f seconds", seconds);
                 wat_log(LOG_INFO, msg);
         }
- 
-        ret = read_wav_data(wav_input);
 
         int n_times = wav_input->wat_args->n_times;
         uint32_t * samples = calloc(n_times, sizeof(uint32_t));
         int i;
-        if(wav_input->wat_args->fft){
-               for(i = 0; i < n_times; i++){
-                        samples[i] = wat_gettime();
-                        run_fft(wav_input, seconds);
-                        samples[i] = wat_gettime() - samples[i];
+        for(i = 0; i < n_times; i++){
+                sprintf(msg, "\n\nRound = %d of %d", i, n_times);
+                wat_log(LOG_BENCH, msg);
+                ret = read_wav_data(wav_input);
+
+               if(wav_input->wat_args->fft){
+                                samples[i] = wat_gettime();
+                                run_fft(wav_input, seconds);
+                                samples[i] = wat_gettime() - samples[i];
                 }
-        }
 
-        if(ret < 0){
-                exit(4);
-        }
-        if(wav_input->wat_args->has_output)
-                save_file(wav_input);
+                if(ret < 0){
+                        exit(4);
+                }
+                if(wav_input->wat_args->has_output)
+                        save_file(wav_input);
 
-        if(wav_input->wat_args->fft){
-//                sprintf(msg, "\n\nBenchmark of %d rounds", n_times);
-//                wat_log(LOG_BENCH, msg);
-                for(i = 0; i < n_times; i++){
-                        sprintf(msg, "\nRound %d => %d", i+1, samples[i]);
+                if(wav_input->wat_args->fft){
+                        //                sprintf(msg, "\n\nBenchmark of %d rounds", n_times);
+                        //                wat_log(LOG_BENCH, msg);
+                        //sprintf(msg, "\nRound %d => %d", i+1, samples[i]);
+                        //wat_log(LOG_BENCH, msg);
+
+                        //                statistics(samples, n_times);
+                }
+                        sprintf(msg, "\n\nbench_read_data= %d", bench_read_data);
                         wat_log(LOG_BENCH, msg);
-                }
+                        sprintf(msg, "\n\nbench_equalize = %d", bench_equalize);
+                        wat_log(LOG_BENCH, msg);
+                        sprintf(msg, "\n\nbench_fix_data = %d", bench_fix_data);
+                        wat_log(LOG_BENCH, msg);
+                        sprintf(msg, "\n\nbench_back_data= %d", bench_back_data);
+                        wat_log(LOG_BENCH, msg);
+                        sprintf(msg, "\n\nbench_convert_double= %d", bench_convert_double);
+                        wat_log(LOG_BENCH, msg);
 
-//                statistics(samples, n_times);
-
-                sprintf(msg, "\n\nbench_read_data= %d", bench_read_data);
-                wat_log(LOG_BENCH, msg);
-                sprintf(msg, "\n\nbench_equalize = %d", bench_equalize);
-                wat_log(LOG_BENCH, msg);
-                sprintf(msg, "\n\nbench_fix_data = %d", bench_fix_data);
-                wat_log(LOG_BENCH, msg);
-                sprintf(msg, "\n\nbench_back_data= %d", bench_back_data);
-                wat_log(LOG_BENCH, msg);
-                sprintf(msg, "\n\nbench_convert_double= %d", bench_convert_double);
-                wat_log(LOG_BENCH, msg);
         }
         sprintf(msg, "\n:)\n");
         wat_log(LOG_BENCH, msg);
@@ -1436,14 +1460,14 @@ int main(int argc, char **argv)
         return 1;
 }
 /*
- 
-uint32_t sample = wat_gettime();
-metodo
-sample = wat_gettime() - sample;
-printf("\n\ntempo = %d\n\n", sample);
 
-Com otimização => 9368.38
+   uint32_t sample = wat_gettime();
+   metodo
+   sample = wat_gettime() - sample;
+   printf("\n\ntempo = %d\n\n", sample);
 
-Sem otimização => 9655.30
+   Com otimização => 9368.38
+
+   Sem otimização => 9655.30
 
 */
