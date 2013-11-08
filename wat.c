@@ -17,24 +17,23 @@ WavInput * wav_input = NULL;
 
 void help()
 {
-        printf("\n\tWAT");
-        printf("\n\nParameters:");
+        printf("\n\tWAT\n");
         printf("\n\thelp                 Help.");
         printf("\n\t-i <imput file>      Imput file.");
         printf("\n\t-o <output file>     Imput file.");
-        printf("\n\t-d                   Print data of input file after and"
-                        " before dft.");
         printf("\n\t-b <int>             Run <int> times to benchmark.");
         printf("\n\t-fft                 Run FFT in input file.");
         printf("\n\t-times <int>         Run FFT <int> times");
-        printf("\n\t-dft                 Run DFT in input file.");
-        printf("\n\t-sec <int>           Run DFT only in <int> seconds");
-        printf("\n\t-log_level=<level>   Define the level of logging, can be"
-                        "INFO (default), ERROR and PANIC.");
+        printf("\n\t-sec <int>           Run FFT only in <int> first seconds");
+        printf("\n\t-log_level=<level>   Define the logging level, can be"
+                        "BENCH, INFO (default), ERROR and PANIC.");
         printf("\n\t-eq <float>          Equalize audio with main factor <float>");
-        printf("\n\t-one-channel         Will apply fft in only left channel");
-        printf("\n\t-nt <int>            Choose the number of threads is using it");
+        printf("\n\t-one-channel         Will apply fft only in left channel");
         printf("\n\t-r <int>             Raise the size of wav file in <int> times");
+
+        printf("\n\n\tUsing threads");
+        printf("\n\tYou have to compile WAT using \"make thread\".\n");
+        printf("\n\t-nt <int>            Choose the number of threads is using it");
 
         printf("\n\n");
 }
@@ -173,19 +172,27 @@ int parse_args(WavInput *wi, int argc, char **argv)
                 else if(strcmp(argv[i], "-log_level=PANIC") == 0){
                         set_log_level(LOG_PANIC);
                 }
+                else if(strcmp(argv[i], "-log_level=BENCH") == 0){
+                        set_log_level(LOG_BENCH);
+                }
 
-#ifdef HAVE_THREADS
                 else if(strcmp(argv[i], "-nt") == 0){
+#ifdef HAVE_THREADS
                         wi->nb_thread = atol(argv[i + 1]);
                         if(wi->nb_thread < 0){
                                 wat_log(LOG_INFO, "\n\nNumber of threads invalid\n\n");
                                 exit(1);
                         }
                         i++;
-                }
+#else 
+                        wat_log(LOG_BENCH, "Error on parameter \"-nt <int>\".\n"
+                                        "This options is only available if"
+                                        " WAT was compiled to use threads, and"
+                                        " wasn't.\n"
+                                        "You can use \"make thread\" for that.\n");
+                        return -1;
 #endif
-
-
+                }
                 else{
                         char msg[60];
                         sprintf(msg, "\nParametro \"%s\" nao encontrado\n", argv[i]);
@@ -395,6 +402,7 @@ int read_wav_data(WavInput * wi)
         FILE *f;
         int ret = 1;
         uint8_t * buffer;
+        char * log = (char *)malloc(128 * sizeof(char));
 
         f = fopen(wi->file_name, "r");
         if (f == NULL){
@@ -429,7 +437,8 @@ int read_wav_data(WavInput * wi)
                 wat_log(LOG_INFO, "\nNumber of channels invalid.");
                 return -3;
         }
-        printf("\nnb_samples = %d", wi->nb_samples);
+        sprintf(log, "\nnb_samples = %d", wi->nb_samples);
+        wat_log(LOG_PANIC, log);
 
         wat_log(LOG_PANIC, "\nGoing to copy the data");
 
@@ -444,7 +453,9 @@ int read_wav_data(WavInput * wi)
                 nb = 1;
         else 
                 nb = wi->wat_args->benchmark;
-        printf("\nBenchmark set as %d\n", nb);
+
+        sprintf(log, "\nBenchmark set as %d\n", nb);
+        wat_log(LOG_INFO, log);
 
         uint32_t * sample_reordering = (uint32_t *)calloc(nb, sizeof(uint32_t));
         uint32_t * sample_unswiting = (uint32_t *)calloc(nb, sizeof(uint32_t));
@@ -929,6 +940,7 @@ int init(WavInput *wi, int argc, char *argv[])
 {
         FILE *f;        
         int ret;
+        char * msg = malloc(128 * sizeof(char));
 
         wi->wat_args = (Arguments *)malloc(sizeof(Arguments));
 
@@ -940,7 +952,6 @@ int init(WavInput *wi, int argc, char *argv[])
 
         f = fopen(wi->file_name, "r");
         if(f == NULL){
-                char * msg = malloc(64 * sizeof(char));
                 sprintf(msg, "\nError while openning input file: \"%s\" \n", 
                                 wi->file_name);
                 wat_log(LOG_INFO, msg);
@@ -952,12 +963,13 @@ int init(WavInput *wi, int argc, char *argv[])
         wi->file_size = ftell(f);
         fclose(f);
 
-        printf("\n\nFile => %s", wi->file_name);
-        printf("\nSize => %d bytes", wi->file_size);
+        sprintf(msg, "\n\nFile => %s", wi->file_name);
+        wat_log(LOG_PANIC, msg);
+        sprintf(msg, "\nSize => %d bytes", wi->file_size);
+        wat_log(LOG_PANIC, msg);
 
         wat_log(LOG_PANIC, "\nRead file DONE\n");
 
-        char msg[50];
         sprintf(msg, "\nInit DONE. ret => %d", ret);
         wat_log(LOG_PANIC, msg);
         return ret;
@@ -1349,14 +1361,16 @@ int main(int argc, char **argv)
                 save_file(wav_input);
 
         if(wav_input->wat_args->fft){
-                printf("\n\n\tBenchmark of %d rounds\n", n_times);
+                sprintf(msg, "\n\n\tBenchmark of %d rounds\n", n_times);
+                wat_log(LOG_INFO, msg);
                 for(i = 0; i < n_times; i++){
-                        printf("\nRound %d => %ju", i+1, (intmax_t)samples[i]);
+                        sprintf(msg, "\nRound %d => %ju", i+1, (intmax_t)samples[i]);
+                        wat_log(LOG_INFO, msg);
                 }
 
                 statistics(samples, n_times);
         }
-        printf("\n\nend\n");
+        printf(":)\n");
         return 1;
 }
 /*

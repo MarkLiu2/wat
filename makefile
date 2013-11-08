@@ -14,8 +14,9 @@ OPT_FLAGS = -Ofast
 LIBS += wat.c
 LIBS += log.c
 LIBS += benchmark.c
-LIBS += fft.c
 LIBS += utils.c
+
+OBJ += fft.o
 
 THREAD += -lpthread
 THREAD += -D
@@ -23,14 +24,17 @@ THREAD += HAVE_THREADS
 
 .PHONY:$(PROGRAM)
 
-$(PROGRAM): $(LIBS)
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D ORIG -D GO
+$(PROGRAM): $(LIBS) $(OBJ)
+	$(CC) -o $(PROGRAM) $(LIBS) $(OBJ) $(CC_FLAGS) -D ORIG -D GO
 
-$(GDB): $(MAIN.c)
-	cc -o $(PROGRAM) $(LIBS) $(GDB_FLAG) -D $(ARG)
+$(GDB): $(LIBS) $(OBJ)
+	cc -o $(PROGRAM) $(LIBS) $(OBJ) $(GDB_FLAG) -D GO
 
 thread:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) $(THREAD) -D GO
+	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) $(THREAD) -D GO
+
+$(OBJ): fft.c
+	$(CC) -c $(OBJ)
 
 fast:
 	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) $(OPT_FLAGS)  -D $(ARG)

@@ -3,6 +3,7 @@
 
 #include<stdio.h>
 
+#define LOG_BENCH   0
 #define LOG_INFO    1
 #define LOG_ERROR   2
 #define LOG_PANIC   3
