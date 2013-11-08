@@ -34,10 +34,10 @@ thread:
 	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) $(THREAD) -D GO
 
 $(OBJ): fft.c
-	$(CC) -c $(OBJ)
+	$(CC) -c fft.c -o fft.o $(OPT_FLAGS)
 
 fast:
-	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) $(OPT_FLAGS)  -D $(ARG)
+	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) $(OPT_FLAGS) -D GO
 
 fission:
 	$(CC) -o $(PROGRAM) $(LIBS) $(CC_FLAGS) -D FISSION -D FISSION_V1 -D $(ARG)
