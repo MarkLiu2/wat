@@ -15,6 +15,16 @@
 
 WavInput * wav_input = NULL;
 
+int bench_nb = 1;
+uint32_t bench_equalize = 0;
+uint32_t bench_fix_data = 0;
+uint32_t bench_read_data = 0;
+
+
+int equalize44k(WavInput *wi, double *temp, int size);
+
+int fix_data_to_fft(WavInput *wi);
+
 void help()
 {
         printf("\n\tWAT\n");
@@ -82,6 +92,7 @@ int calculate_factors(Factors * fc, float main_fc)
         fc->fac_9 = 0.7 * main_fc;
         fc->fac_10 = 0.7 * main_fc;
 
+        /*
         wat_log(LOG_INFO, "\n\nFactors:\n");
         printf("\n\tfac_0 = %f", fc->fac_0);
         printf("\n\tfac_1 = %f", fc->fac_1);
@@ -94,6 +105,7 @@ int calculate_factors(Factors * fc, float main_fc)
         printf("\n\tfac_8 = %f", fc->fac_8);
         printf("\n\tfac_9 = %f", fc->fac_9);
         printf("\n\tfac_10 = %f\n", fc->fac_10);
+        */
         
         return 1;
 }
@@ -139,6 +151,7 @@ int parse_args(WavInput *wi, int argc, char **argv)
                 }
                 else if(strcmp(argv[i], "-b") == 0){
                         wi->wat_args->benchmark = atoi(argv[i + 1]);
+                        bench_nb = atoi(argv[i + 1]);
                         i++;
                 }
                 else if(strcmp(argv[i], "-sec") == 0){
@@ -268,14 +281,93 @@ int equalizeXk(WavInput *wi, double *temp, int size)
         return 1;
 }
 
+#ifdef ORIG
+int equalize44k(WavInput *wi, double *temp, int size)
+{
+        wat_log(LOG_PANIC, "\nEqualizing audio with 44.1k");
+        int i;
+        
+        for(i = BAND_MIN; i < BAND_MAX; i++){
+                if(i < BAND_0)
+                        temp[i] *= wi->factors->fac_0;
+                else if(i < BAND_1)
+                        temp[i] *= wi->factors->fac_1;
+                else if(i < BAND_2)
+                        temp[i] *= wi->factors->fac_2;
+                else if(i < BAND_3)
+                        temp[i] *= wi->factors->fac_3;
+                else if(i < BAND_4)
+                        temp[i] *= wi->factors->fac_4;
+                else if(i < BAND_5)
+                        temp[i] *= wi->factors->fac_5;
+                else if(i < BAND_6)
+                        temp[i] *= wi->factors->fac_6;
+                else if(i < BAND_7)
+                        temp[i] *= wi->factors->fac_7;
+                else if(i < BAND_8)
+                        temp[i] *= wi->factors->fac_8;
+                else if(i < BAND_9)
+                        temp[i] *= wi->factors->fac_9;
+                else
+                        temp[i] *= wi->factors->fac_10;
+        }
+        return 1;    
+}
+#endif
+
+#ifdef ORIG_B
 
 int equalize44k(WavInput *wi, double *temp, int size)
 {
         wat_log(LOG_PANIC, "\nEqualizing audio with 44.1k");
         int i;
+        uint32_t sample;
+
+        sample = wat_gettime();
+
+        for(i = BAND_MIN; i < BAND_MAX; i++){
+                if(i < BAND_0)
+                        temp[i] *= wi->factors->fac_0;
+                else if(i < BAND_1)
+                        temp[i] *= wi->factors->fac_1;
+                else if(i < BAND_2)
+                        temp[i] *= wi->factors->fac_2;
+                else if(i < BAND_3)
+                        temp[i] *= wi->factors->fac_3;
+                else if(i < BAND_4)
+                        temp[i] *= wi->factors->fac_4;
+                else if(i < BAND_5)
+                        temp[i] *= wi->factors->fac_5;
+                else if(i < BAND_6)
+                        temp[i] *= wi->factors->fac_6;
+                else if(i < BAND_7)
+                        temp[i] *= wi->factors->fac_7;
+                else if(i < BAND_8)
+                        temp[i] *= wi->factors->fac_8;
+                else if(i < BAND_9)
+                        temp[i] *= wi->factors->fac_9;
+                else
+                        temp[i] *= wi->factors->fac_10;
+        }
+        sample = wat_gettime() - sample;
+
+        bench_equalize += sample;
+        return 1;    
+}
+#endif
+
+#ifdef FISSION
+int equalize44k(WavInput *wi, double *temp, int size)
+{
+        wat_log(LOG_PANIC, "\nEqualizing audio with 44.1k");
+        int i;
+        uint32_t samples;
+
+        samples = wat_gettime();
+
         for(i = BAND_MIN; i < BAND_0; i++)
                 temp[i] *= wi->factors->fac_0;
-    
+
         for(i = BAND_0; i < BAND_1; i++)
                 temp[i] *= wi->factors->fac_1;
 
@@ -306,8 +398,71 @@ int equalize44k(WavInput *wi, double *temp, int size)
         for(i = BAND_9; i < BAND_MAX; i++)
                 temp[i] *= wi->factors->fac_10;
 
+        samples = wat_gettime() - samples;
+
+        bench_equalize += samples;
         return 1;
 }
+#endif
+
+#ifdef OPT
+int equalize44k(WavInput *wi, double *temp, int size)
+{
+        wat_log(LOG_PANIC, "\nEqualizing audio with 44.1k");
+        int i;
+
+        uint32_t sample = wat_gettime();
+
+        float aux_fac = wi->factors->fac_0;
+        for(i = BAND_MIN; i < BAND_0; i++)
+                temp[i] *= aux_fac;
+    
+        aux_fac = wi->factors->fac_1;
+        for(i = BAND_0; i < BAND_1; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_2;
+        for(i = BAND_1; i < BAND_2; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_3;
+        for(i = BAND_2; i < BAND_3; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_4;
+        for(i = BAND_3; i < BAND_4; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_5;
+        for(i = BAND_4; i < BAND_5; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_6;
+        for(i = BAND_5; i < BAND_6; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_7;
+        for(i = BAND_6; i < BAND_7; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_8;
+        for(i = BAND_7; i < BAND_8; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_9;
+        for(i = BAND_8; i < BAND_9; i++)
+                temp[i] *= aux_fac;
+
+        aux_fac = wi->factors->fac_10;
+        for(i = BAND_9; i < BAND_MAX; i++)
+                temp[i] *= aux_fac;
+
+        sample = wat_gettime() - sample;
+        bench_equalize += sample;
+
+        return 1;
+}
+#endif
 
 int read_header_file(WavHeader * wh, char *file_name)
 {
@@ -600,6 +755,7 @@ int read_wav_data(WavInput * wi)
         return 1;
 }
 
+#ifdef ORIG
 int fix_data_to_fft(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nfix_data_to_fft");
@@ -628,6 +784,91 @@ int fix_data_to_fft(WavInput *wi)
         wat_log(LOG_PANIC, ", DONE");
         return 1;
 }
+#endif
+
+#ifdef ORIG_B 
+int fix_data_to_fft(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nfix_data_to_fft");
+        bench_fix_data = wat_gettime();
+
+        wi->left_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+        if(wi->left_fixed == NULL){
+                wat_log(LOG_ERROR, "\nMemory error in left_fixed");
+        }
+        if(wi->wav_header->num_channels == 2){
+                wi->right_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+                if(wi->right_fixed == NULL){
+                        wat_log(LOG_ERROR, "\nMemory error in right_fixed");
+                }
+        }
+
+        wat_log(LOG_PANIC, ", allocated");
+        int i;
+        for(i = 0; i < wi->nb_samples; i++){
+                wi->left_fixed[2*i+1] = wi->left_side[i];
+                wi->left_fixed[2*i+2] = 0;
+                if(wi->wav_header->num_channels == 2){
+                        wi->right_fixed[2*i+1] = wi->right_side[i];
+                        wi->right_fixed[2*i+2] = 0;
+                }
+        }
+        bench_fix_data = wat_gettime() - bench_fix_data;
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;
+}
+#endif
+
+#if defined(OPT) || defined(FISSION)
+int fix_data_to_fft(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nfix_data_to_fft");
+
+        wi->left_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+        if(wi->left_fixed == NULL){
+                wat_log(LOG_ERROR, "\nMemory error in left_fixed");
+        }
+        if(wi->wav_header->num_channels == 2){
+                wi->right_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+                if(wi->right_fixed == NULL){
+                        wat_log(LOG_ERROR, "\nMemory error in right_fixed");
+                }
+        }
+
+        wat_log(LOG_PANIC, ", allocated");
+        int max = wi->nb_samples;
+        int i;
+        double *lf = wi->left_fixed;
+        double *rf = wi->right_fixed;
+
+        double *ls = wi->left_side;
+        double *rs = wi->right_side;
+
+
+
+        bench_fix_data = wat_gettime();
+
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < max; i++){
+                        lf[2*i+1] = ls[i];
+                        lf[2*i+2] = 0;
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < max; i++){
+                        lf[2*i+1] = ls[i];
+                        lf[2*i+2] = 0;
+                        rf[2*i+1] = rs[i];
+                        rf[2*i+2] = 0;
+                }
+        }
+        bench_fix_data = wat_gettime() - bench_fix_data;
+
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;
+}
+#endif
+
 
 int back_data_to_normal(WavInput *wi)
 {
@@ -1072,6 +1313,9 @@ int main(int argc, char **argv)
                 }
 
                 statistics(samples, n_times);
+
+                printf("\n\nbench_equalize = %d", bench_equalize);
+                printf("\n\nbench_fix_data = %d", bench_fix_data);
         }
         printf("\n:)\n");
         printf("\t\t\t\t<-------------\n");

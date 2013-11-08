@@ -7,7 +7,7 @@ CC = cc
 CC_FLAGS = -Wall
 
 n = 1
-ARG = NONE
+ARG = GO
 
 OPT_FLAGS = -Ofast
 
