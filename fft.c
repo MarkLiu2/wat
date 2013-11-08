@@ -9,16 +9,11 @@
 
 void pick_fft(double data[], int nn, int isign)
 {
-#ifdef FISSION
-#ifdef FISSION_V1
+#if defined(FISSION) || defined(OPT)
         fission_fft(data, nn, isign);
 #endif
 
-#ifdef FISSION_V2
-        fission_fft_v2(data, nn, isign);
-#endif
-
-#else
+#if defined(ORIG) || defined(ORIG_B)
         original_fft(data, nn, isign);
 #endif
 }

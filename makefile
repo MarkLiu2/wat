@@ -44,15 +44,15 @@ fast:
 # OPTIMIZATIONS #
 
 opt:
-	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) -D OPT  -D $(ARG)
+	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) -D OPT  -D $(ARG)
 
 
 orig:
-	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) -D ORIG_B -D $(ARG)
+	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) -D ORIG_B -D $(ARG)
 
 
 fission:
-	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) -D FISSION -D $(ARG)
+	$(CC) -o $(PROGRAM) $(LIBS) fft.c $(CC_FLAGS) -D FISSION -D $(ARG)
 
 
 # OPTIMIZATIONS #

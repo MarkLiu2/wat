@@ -54,8 +54,4 @@ void original_fft(double data[], int nn, int isign)
                 }
                 mmax = istep;
         }
-//#endif
 }
-
-
-
