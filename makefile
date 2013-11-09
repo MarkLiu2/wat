@@ -36,28 +36,28 @@ $(PROGRAM): $(LIB) $(OPT_OBJ)
 	$(CC) -o $(PROGRAM) $(LIB) $(OPT_OBJ) $(CC_FLAGS) -D ORIG -D GO
 
 $(GDB): $(LIB) $(OPT_OBJ)
-	cc -o $(PROGRAM) $(LIB) $(OBJ) $(GDB_FLAG) -D GO
+	cc -o $(PROGRAM) $(LIB) $(OPT_OBJ) $(GDB_FLAG) -D GO
 
 thread: $(LIB) $(OPT_OBJ)
 	$(CC) -o $(PROGRAM) $(OBJ) $(LIB) $(CC_FLAGS) $(THREAD) -D GO
 
 $(OPT_OBJ): $(OPT_LIB)
-	$(CC) -c $(OPT_LIB) -o $(OPT_OBJ) $(OPT_FLAGS)
+	$(CC) -c $(OPT_LIB) -o $(OPT_OBJ) $(OPT_FLAGS) -D ORIG
 
 
 #==============================================================================#
 # OPTIMIZATIONS #
 
 opt:
-	$(CC) -o $(PROGRAM) fft.c $(LIB) $(CC_FLAGS) -D OPT  -D $(ARG)
+	$(CC) -o $(PROGRAM) $(OPT_OBJ) $(LIB) $(CC_FLAGS) -D OPT  -D $(ARG)
 
 
 orig:
-	$(CC) -o $(PROGRAM) fft.c $(LIB) $(CC_FLAGS) -D ORIG_B -D $(ARG)
+	$(CC) -o $(PROGRAM) $(OPT_OBJ) $(LIB) $(CC_FLAGS) -D ORIG_B -D $(ARG)
 
 
 fission:
-	$(CC) -o $(PROGRAM) $(LIB) fft.c $(CC_FLAGS) -D FISSION -D $(ARG)
+	$(CC) -o $(PROGRAM) $(LIB) $(OPT_OBJ) $(CC_FLAGS) -D FISSION -D $(ARG)
 
 
 # OPTIMIZATIONS #

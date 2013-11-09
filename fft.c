@@ -9,6 +9,7 @@
 
 uint32_t pick_fft(double data[], int nn, int isign)
 {
+        /*
 #if defined(FISSION) || defined(OPT)
         return fission_fft(data, nn, isign);
 #endif
@@ -16,5 +17,7 @@ uint32_t pick_fft(double data[], int nn, int isign)
 #if defined(ORIG) || defined(ORIG_B)
         return original_fft(data, nn, isign);
 #endif
+*/
+        return original_fft(data, nn, isign);
         return -1;
 }
