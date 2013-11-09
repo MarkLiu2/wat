@@ -11,12 +11,20 @@ ARG = GO
 
 OPT_FLAGS = -Ofast
 
-LIBS += wat.c
-LIBS += log.c
-LIBS += benchmark.c
-LIBS += utils.c
+MAIN_LIB += wat.c
 
-OBJ += fft.o
+LIB += wat.c
+LIB += log.c
+LIB += benchmark.c
+LIB += utils.c
+
+OBJ += wat.o
+OBJ += log.o
+OBJ += benchmark.o
+OBJ += utils.o
+
+OPT_OBJ += fft.o
+OPT_LIB += fft.c
 
 THREAD += -lpthread
 THREAD += -D
@@ -24,35 +32,32 @@ THREAD += HAVE_THREADS
 
 .PHONY:$(PROGRAM)
 
-$(PROGRAM): $(LIBS) $(OBJ)
-	$(CC) -o $(PROGRAM) $(LIBS) $(OBJ) $(CC_FLAGS) -D ORIG -D GO
+$(PROGRAM): $(LIB) $(OPT_OBJ) 
+	$(CC) -o $(PROGRAM) $(LIB) $(OPT_OBJ) $(CC_FLAGS) -D ORIG -D GO
 
-$(GDB): $(LIBS) $(OBJ)
-	cc -o $(PROGRAM) $(LIBS) $(OBJ) $(GDB_FLAG) -D GO
+$(GDB): $(LIB) $(OPT_OBJ)
+	cc -o $(PROGRAM) $(LIB) $(OBJ) $(GDB_FLAG) -D GO
 
-thread:
-	$(CC) -o $(PROGRAM) $(OBJ) $(LIBS) $(CC_FLAGS) $(THREAD) -D GO
+thread: $(LIB) $(OPT_OBJ)
+	$(CC) -o $(PROGRAM) $(OBJ) $(LIB) $(CC_FLAGS) $(THREAD) -D GO
 
-$(OBJ): fft.c
-	$(CC) -c fft.c -o fft.o $(OPT_FLAGS)
-
-fast:
-	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) $(OPT_FLAGS) -D GO
+$(OPT_OBJ): $(OPT_LIB)
+	$(CC) -c $(OPT_LIB) -o $(OPT_OBJ) $(OPT_FLAGS)
 
 
 #==============================================================================#
 # OPTIMIZATIONS #
 
 opt:
-	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) -D OPT  -D $(ARG)
+	$(CC) -o $(PROGRAM) fft.c $(LIB) $(CC_FLAGS) -D OPT  -D $(ARG)
 
 
 orig:
-	$(CC) -o $(PROGRAM) fft.c $(LIBS) $(CC_FLAGS) -D ORIG_B -D $(ARG)
+	$(CC) -o $(PROGRAM) fft.c $(LIB) $(CC_FLAGS) -D ORIG_B -D $(ARG)
 
 
 fission:
-	$(CC) -o $(PROGRAM) $(LIBS) fft.c $(CC_FLAGS) -D FISSION -D $(ARG)
+	$(CC) -o $(PROGRAM) $(LIB) fft.c $(CC_FLAGS) -D FISSION -D $(ARG)
 
 
 # OPTIMIZATIONS #
@@ -62,6 +67,7 @@ clean:
 	$(RM) -R wat.dSYM/
 	$(RM) *.out
 	$(RM) $(PROGRAM)
+	$(RM) *.o
 
 output:
 	$(RM) _*
