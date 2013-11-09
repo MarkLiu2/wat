@@ -22,6 +22,7 @@ uint32_t bench_fix_data = 0;
 uint32_t bench_read_data = 0;
 uint32_t bench_back_data = 0;
 uint32_t bench_convert_double = 0;
+uint32_t bench_save_file = 0;
 
 uint32_t *bench_fft_1;
 
@@ -33,6 +34,8 @@ int fix_data_to_fft(WavInput *wi);
 int back_data_to_normal(WavInput *wi);
 
 int convert_double_to_short(WavInput *wi);
+
+int save_file(WavInput *wi);
 
 void help()
 {
@@ -1060,15 +1063,14 @@ int convert_double_to_short(WavInput *wi)
                         count++;
                 }
         }
-
         bench_convert_double = wat_gettime() - bench_convert_double;
         wat_log(LOG_PANIC, ", DONE.");
 
         return 1;
 }
-#endif
+#endif // FISSION
 
-
+#ifdef ORIG
 int save_file(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nsave_file");
@@ -1107,6 +1109,148 @@ int save_file(WavInput *wi)
         wat_log(LOG_PANIC, ", DONE");
         return 1;        
 }
+#endif //ORIG
+
+#if defined(ORIG_B) || defined(FISSION)
+int save_file(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nsave_file");
+
+        if(wi->wat_args->raise != 0){
+                raise_wav_file(wi);
+        }
+
+        char * msg = malloc(128 * sizeof(char));
+        FILE *f;
+
+        f = fopen(wi->output_file, "wb");
+        if(f == NULL){
+                sprintf(msg, "\nError while openning the output file: \"%s\".", 
+                                wi->output_file);
+                wat_log(LOG_INFO, msg);
+                return -1;
+        }
+
+        write_header(wi->wav_header, f);
+
+        convert_double_to_short(wi);
+
+        int i;
+
+        wat_log(LOG_PANIC, "\n, writing");
+
+        bench_save_file = wat_gettime();
+        for(i = 0; i < wi->wav_header->subchunk2_size; i += wi->wav_header->num_channels){
+                fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                if(wi->wav_header->num_channels == 2){
+                        fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
+                }
+        }
+        bench_save_file = wat_gettime() - bench_save_file;
+
+        fclose(f);
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;        
+}
+#endif //ORIG_B
+
+#if defined(OPT)
+int save_file(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nsave_file");
+
+        if(wi->wat_args->raise != 0){
+                raise_wav_file(wi);
+        }
+
+        char * msg = malloc(128 * sizeof(char));
+        FILE *f;
+
+        f = fopen(wi->output_file, "wb");
+        if(f == NULL){
+                sprintf(msg, "\nError while openning the output file: \"%s\".", 
+                                wi->output_file);
+                wat_log(LOG_INFO, msg);
+                return -1;
+        }
+
+        write_header(wi->wav_header, f);
+
+        convert_double_to_short(wi);
+
+        int i;
+
+        wat_log(LOG_PANIC, "\n, writing");
+
+        bench_save_file = wat_gettime();
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->wav_header->subchunk2_size; i += wi->wav_header->num_channels){
+                        fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                }
+
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->wav_header->subchunk2_size; i += wi->wav_header->num_channels){
+                        fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                        fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
+                }
+        }
+        bench_save_file = wat_gettime() - bench_save_file;
+
+        fclose(f);
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;        
+}
+
+#endif //OPT
+
+#ifdef FISSION2
+int save_file(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nsave_file");
+
+        if(wi->wat_args->raise != 0){
+                raise_wav_file(wi);
+        }
+
+        char * msg = malloc(128 * sizeof(char));
+        FILE *f;
+
+        f = fopen(wi->output_file, "wb");
+        if(f == NULL){
+                sprintf(msg, "\nError while openning the output file: \"%s\".", 
+                                wi->output_file);
+                wat_log(LOG_INFO, msg);
+                return -1;
+        }
+
+        write_header(wi->wav_header, f);
+
+        convert_double_to_short(wi);
+
+        int i;
+
+        wat_log(LOG_PANIC, "\n, writing");
+
+        bench_save_file = wat_gettime();
+        for(i = 0; i < wi->wav_header->subchunk2_size/2; i += wi->wav_header->num_channels){
+                fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
+        }
+        for(i = wi->wav_header->subchunk2_size/2; i < wi->wav_header->subchunk2_size; i += wi->wav_header->num_channels){
+                fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
+        }
+ 
+        bench_save_file = wat_gettime() - bench_save_file;
+
+        fclose(f);
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;        
+}
+#endif //FISSION
+
+
 
 void divides_nfft(double * temp, int size)
 {
@@ -1451,6 +1595,9 @@ int main(int argc, char **argv)
                         wat_log(LOG_BENCH, msg);
                         sprintf(msg, "\n\nbench_convert_double= %d", bench_convert_double);
                         wat_log(LOG_BENCH, msg);
+                        sprintf(msg, "\n\nbench_save_file = %d", bench_save_file);
+                        wat_log(LOG_BENCH, msg);
+
 
         }
         sprintf(msg, "\n:)\n");
