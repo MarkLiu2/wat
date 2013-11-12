@@ -19,5 +19,4 @@ uint32_t pick_fft(double data[], int nn, int isign)
 #endif
 */
         return original_fft(data, nn, isign);
-        return -1;
 }
