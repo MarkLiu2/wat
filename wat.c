@@ -371,6 +371,68 @@ int equalize44k(WavInput *wi, double *temp, int size)
 }
 #endif //ORIG_B
 
+#if defined(UNROLL) || defined(UNROFIS)
+int equalize44k(WavInput *wi, double *temp, int size)
+{
+        wat_log(LOG_PANIC, "\nEqualizing audio with 44.1k, fission");
+        int i;
+        uint32_t samples;
+
+        samples = wat_gettime();
+
+        for(i = BAND_MIN; i < BAND_0; i += 2){
+                temp[i] *= wi->factors->fac_0;
+                temp[i + 1] *= wi->factors->fac_0;
+        }
+        for(i = BAND_0; i < BAND_1; i += 2){
+                temp[i] *= wi->factors->fac_1;
+                temp[i + 1] *= wi->factors->fac_1;
+        }
+        for(i = BAND_1; i < BAND_2; i += 2){
+                temp[i] *= wi->factors->fac_2;
+                temp[i + 1] *= wi->factors->fac_2;
+        }
+        for(i = BAND_2; i < BAND_3; i += 2){
+                temp[i] *= wi->factors->fac_3;
+                temp[i + 1] *= wi->factors->fac_3;
+        }
+        for(i = BAND_3; i < BAND_4; i += 2){
+                temp[i] *= wi->factors->fac_4;
+                temp[i + 1] *= wi->factors->fac_4;
+        }
+        for(i = BAND_4; i < BAND_5; i += 2){
+                temp[i] *= wi->factors->fac_5;
+                temp[i + 1] *= wi->factors->fac_5;
+        }
+        for(i = BAND_5; i < BAND_6; i += 2){
+                temp[i] *= wi->factors->fac_6;
+                temp[i + 1] *= wi->factors->fac_6;
+        }
+        for(i = BAND_6; i < BAND_7; i += 2){
+                temp[i] *= wi->factors->fac_7;
+                temp[i + 1] *= wi->factors->fac_7;
+        }
+        for(i = BAND_7; i < BAND_8; i += 2){
+                temp[i] *= wi->factors->fac_8;
+                temp[i + 1] *= wi->factors->fac_8;
+        }
+        for(i = BAND_8; i < BAND_9; i += 2){
+                temp[i] *= wi->factors->fac_9;
+                temp[i + 1] *= wi->factors->fac_9;
+        }
+        for(i = BAND_9; i < BAND_MAX; i += 2){
+                temp[i] *= wi->factors->fac_10;
+                temp[i + 1] *= wi->factors->fac_10;
+        }
+
+        samples = wat_gettime() - samples;
+
+        bench_equalize += samples;
+        return 1;
+}
+#endif //UNROLL
+
+
 #if defined(FISSION) || defined(OPT)
 int equalize44k(WavInput *wi, double *temp, int size)
 {
@@ -590,6 +652,46 @@ int read_wav_data(WavInput * wi)
         bench_read_data = wat_gettime() - bench_read_data;
 
 #endif //ORIG_B
+        
+#if defined(UNROLL) //|| defined(FISSION)
+        bench_read_data = wat_gettime();
+        i = it = 0;
+        if(wi->wav_header->num_channels == 1){
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        i++;
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        i++;
+
+                }
+        }
+        if(wi->wav_header->num_channels == 2){
+                i = 0;
+                it = 0;
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it += 2;
+                        i++;
+
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it += 2;
+                        i++;
+                }
+        }
+        bench_read_data = wat_gettime() - bench_read_data;
+
+#endif // UNROLL
+
 
 #if defined(OPT) //|| defined(FISSION)
         bench_read_data = wat_gettime();
@@ -629,8 +731,13 @@ int read_wav_data(WavInput * wi)
         }
         else if(wi->wav_header->num_channels == 2){
                 while(it < wi->wav_header->subchunk2_size){
-                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
                         wi->zero_data[i] = 0;
+                        it+=4;
+                        i++;
+                }
+                i = it = 0;
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
                         it += 4;
                         i++;
                 }
@@ -644,6 +751,54 @@ int read_wav_data(WavInput * wi)
         }
         bench_read_data = wat_gettime() - bench_read_data;
 #endif //R_FISSION
+
+#ifdef UNROFIS
+        bench_read_data = wat_gettime();
+        i = it = 0;
+        if(wi->wav_header->num_channels == 1){
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        i++;
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        wi->zero_data[i] = 0;
+                        it += 2;
+                        i++;
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->zero_data[i] = 0;
+                        it+=4;
+                        i++;
+                        wi->zero_data[i] = 0;
+                        it+=4;
+                        i++;
+                }
+                i = it = 0;
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it += 4;
+                        i++;
+                        wi->left_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it += 4;
+                        i++;
+                }
+                i = 0;
+                it = 2; 
+                while(it < wi->wav_header->subchunk2_size){
+                        wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it+=4;
+                        i++;
+                        wi->right_side[i] = bytes_to_double(buffer[it], buffer[it + 1]);
+                        it+=4;
+                        i++;
+                }
+        }
+        bench_read_data = wat_gettime() - bench_read_data;
+#endif // UNROFIS
+
 
         wat_log(LOG_PANIC, ", DONE.");
         return 1;
@@ -713,6 +868,65 @@ int fix_data_to_fft(WavInput *wi)
 }
 #endif //ORIG_B
 
+#if defined(UNROLL) 
+int fix_data_to_fft(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nfix_data_to_fft");
+
+        wi->left_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+        if(wi->left_fixed == NULL){
+                wat_log(LOG_ERROR, "\nMemory error in left_fixed");
+        }
+        if(wi->wav_header->num_channels == 2){
+                wi->right_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+                if(wi->right_fixed == NULL){
+                        wat_log(LOG_ERROR, "\nMemory error in right_fixed");
+                }
+        }
+
+        wat_log(LOG_PANIC, ", allocated");
+        bench_fix_data = wat_gettime();
+        int i;
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_fixed[2*i+1] = wi->left_side[i];
+                        wi->left_fixed[2*i+2] = 0;
+
+                        wi->left_fixed[2*i+3] = wi->left_side[i + 1];
+                        wi->left_fixed[2*i+4] = 0;
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_fixed[2*i+1] = wi->left_side[i];
+                        wi->left_fixed[2*i+2] = 0;
+                        wi->right_fixed[2*i+1] = wi->right_side[i];
+                        wi->right_fixed[2*i+2] = 0;
+
+                        wi->left_fixed[2*i+3] = wi->left_side[i+1];
+                        wi->left_fixed[2*i+4] = 0;
+                        wi->right_fixed[2*i+3] = wi->right_side[i+1];
+                        wi->right_fixed[2*i+4] = 0;
+                        /*
+                        wi->left_fixed[2*i+5] = wi->left_side[i+2];
+                        wi->left_fixed[2*i+6] = 0;
+                        wi->right_fixed[2*i+5] = wi->right_side[i+2];
+                        wi->right_fixed[2*i+6] = 0;
+                         
+                        wi->left_fixed[2*i+7] = wi->left_side[i+3];
+                        wi->left_fixed[2*i+8] = 0;
+                        wi->right_fixed[2*i+7] = wi->right_side[i+3];
+                        wi->right_fixed[2*i+8] = 0;
+                        */
+                 }
+        }
+        bench_fix_data = wat_gettime() - bench_fix_data;
+
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;
+}
+#endif //UNROLL
+
 #if defined(OPT) 
 int fix_data_to_fft(WavInput *wi)
 {
@@ -744,7 +958,7 @@ int fix_data_to_fft(WavInput *wi)
                         wi->left_fixed[2*i+2] = 0;
                         wi->right_fixed[2*i+1] = wi->right_side[i];
                         wi->right_fixed[2*i+2] = 0;
-                }
+                 }
         }
         bench_fix_data = wat_gettime() - bench_fix_data;
 
@@ -752,6 +966,57 @@ int fix_data_to_fft(WavInput *wi)
         return 1;
 }
 #endif //OPT
+
+#if defined(UNROFIS) 
+int fix_data_to_fft(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nfix_data_to_fft");
+
+        wi->left_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+        if(wi->left_fixed == NULL){
+                wat_log(LOG_ERROR, "\nMemory error in left_fixed");
+        }
+        if(wi->wav_header->num_channels == 2){
+                wi->right_fixed = (double *)malloc(2 * wi->nb_samples * sizeof(double) + 1);
+                if(wi->right_fixed == NULL){
+                        wat_log(LOG_ERROR, "\nMemory error in right_fixed");
+                }
+        }
+
+        wat_log(LOG_PANIC, ", allocated");
+        bench_fix_data = wat_gettime();
+        int i;
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_fixed[2*i+1] = wi->left_side[i];
+                        wi->left_fixed[2*i+2] = 0;
+                        wi->left_fixed[2*i+3] = wi->left_side[i+1];
+                        wi->left_fixed[2*i+4] = 0;
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_fixed[2*i+1] = wi->left_side[i];
+                        wi->left_fixed[2*i+2] = 0;
+
+                        wi->left_fixed[2*i+3] = wi->left_side[i+1];
+                        wi->left_fixed[2*i+4] = 0;
+                }
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->right_fixed[2*i+1] = wi->right_side[i];
+                        wi->right_fixed[2*i+2] = 0;
+
+                        wi->right_fixed[2*i+3] = wi->right_side[i+1];
+                        wi->right_fixed[2*i+4] = 0;
+                }
+        }
+        bench_fix_data = wat_gettime() - bench_fix_data;
+
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;
+}
+#endif //UNROFIS
+
 
 #if defined(FISSION) 
 int fix_data_to_fft(WavInput *wi)
@@ -793,7 +1058,7 @@ int fix_data_to_fft(WavInput *wi)
         wat_log(LOG_PANIC, ", DONE");
         return 1;
 }
-#endif //OPT
+#endif //FISSION
 
 
 #ifdef ORIG
@@ -834,6 +1099,37 @@ int back_data_to_normal(WavInput *wi)
 }
 #endif //ORIG_B
 
+#if defined(UNROLL) 
+int back_data_to_normal(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nback_data_to_normal");
+        int i;
+
+        bench_back_data = wat_gettime();
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_side[i] = wi->left_fixed[2*i+1]; 
+                        wi->left_side[i+1] = wi->left_fixed[2*(i+1)+1]; 
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_side[i] = wi->left_fixed[2*i+1]; 
+                        wi->right_side[i] = wi->right_fixed[2*i+1]; 
+
+                        wi->left_side[i + 1] = wi->left_fixed[2*(i+1)+1]; 
+                        wi->right_side[i + 1] = wi->right_fixed[2*(i+1)+1]; 
+ 
+                }
+        }
+        bench_back_data = wat_gettime() - bench_back_data;
+
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;
+}
+#endif // UNROLL
+
+
 #if defined(OPT) 
 int back_data_to_normal(WavInput *wi)
 {
@@ -858,6 +1154,38 @@ int back_data_to_normal(WavInput *wi)
         return 1;
 }
 #endif //OPT
+
+#if defined(UNROFIS)
+int back_data_to_normal(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nback_data_to_normal");
+        int i;
+
+        bench_back_data = wat_gettime();
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_side[i] = wi->left_fixed[2*i+1]; 
+                        wi->left_side[i+1] = wi->left_fixed[2*(i+1)+1]; 
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->left_side[i] = wi->left_fixed[2*i+1]; 
+                        wi->left_side[i+1] = wi->left_fixed[2*(i+1)+1]; 
+                }
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->right_side[i] = wi->right_fixed[2*i+1]; 
+                        
+                        wi->right_side[i+1] = wi->right_fixed[2*(i+1)+1]; 
+                }
+        }
+        bench_back_data = wat_gettime() - bench_back_data;
+
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;
+}
+#endif //UNROFIS
+
 
 
 #if defined(FISSION)
@@ -998,6 +1326,7 @@ int convert_double_to_short(WavInput *wi)
         wat_log(LOG_PANIC, ", copying into buffer");
         int iterator = wi->wav_header->num_channels * 2;
         int count = 0;
+ 
         for(i = 0; i < wi->nb_samples * iterator; i += iterator){
                 memcpy(&wi->buffer[i], &wi->short_left[count], 2);
                 if(wi->wav_header->num_channels == 2){
@@ -1005,7 +1334,6 @@ int convert_double_to_short(WavInput *wi)
                 }
                 count++;
         }
-
         bench_convert_double = wat_gettime() - bench_convert_double;
         wat_log(LOG_PANIC, ", DONE.");
 
@@ -1013,7 +1341,75 @@ int convert_double_to_short(WavInput *wi)
 }
 #endif // ORIG_B
 
-#if defined(OPT) //|| defined(FISSION)
+#if defined(UNROLL) 
+int convert_double_to_short(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nconvert_double_to_short");
+
+        if(wi->wav_header->num_channels == 2){
+                wi->short_left = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+                wi->short_right = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+        }
+        else {
+                wi->short_left = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+        }
+
+        wi->buffer = (unsigned char *)malloc(sizeof(unsigned char) 
+                        * wi->wav_header->subchunk2_size);
+
+        wat_log(LOG_PANIC, ", short arrays allocated");
+        int i;
+        bench_convert_double = wat_gettime();
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->short_left[i] = (short int)wi->left_side[i];
+                        wi->short_left[i+1] = (short int)wi->left_side[i+1];
+                }
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples; i+=2){
+                        wi->short_left[i] = (short int)wi->left_side[i];
+                        wi->short_right[i] = (short int)wi->right_side[i];
+
+                        wi->short_left[i+1] = (short int)wi->left_side[i+1];
+                        wi->short_right[i+1] = (short int)wi->right_side[i+1];
+                }
+        }
+
+        wat_log(LOG_PANIC, ", copying into buffer");
+        int iterator = wi->wav_header->num_channels * 2;
+        int count = 0;
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples * iterator; i += 4){
+                        memcpy(&wi->buffer[i], &wi->short_left[count], 2);
+                        count++;
+                        memcpy(&wi->buffer[i + 2], &wi->short_left[count], 2);
+                        count++;
+                }
+        }
+        if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples * iterator; i +=  8){
+                        memcpy(&wi->buffer[i], &wi->short_left[count], 2);
+                        memcpy(&wi->buffer[i + 2], &wi->short_right[count], 2);
+                        count++;
+                        memcpy(&wi->buffer[i + 4], &wi->short_left[count], 2);
+                        memcpy(&wi->buffer[i + 6], &wi->short_right[count], 2);
+                        count++;
+
+                }
+        }
+
+        bench_convert_double = wat_gettime() - bench_convert_double;
+        wat_log(LOG_PANIC, ", DONE.");
+
+        return 1;
+}
+#endif // UNROLL
+
+#if defined(OPT) 
 int convert_double_to_short(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nconvert_double_to_short");
@@ -1071,6 +1467,70 @@ int convert_double_to_short(WavInput *wi)
 }
 #endif // OPT
 
+#if defined(UNROFIS)
+int convert_double_to_short(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nconvert_double_to_short");
+
+        if(wi->wav_header->num_channels == 2){
+                wi->short_left = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+                wi->short_right = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+        }
+        else {
+                wi->short_left = (short int *)malloc(sizeof(short int) 
+                                * wi->nb_samples);
+        }
+
+        wi->buffer = (unsigned char *)malloc(sizeof(unsigned char) 
+                        * wi->wav_header->subchunk2_size);
+
+        wat_log(LOG_PANIC, ", short arrays allocated");
+        int i;
+
+        wat_log(LOG_PANIC, ", copying into buffer");
+        bench_convert_double = wat_gettime();
+        int iterator = wi->wav_header->num_channels * 2;
+        int count = 0;
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->nb_samples * 2; i += 4){
+                        wi->short_left[i / 2] = (short int)wi->left_side[i / 2];
+                        memcpy(&wi->buffer[i], &wi->short_left[count], 2);
+                        count++;
+                        wi->short_left[(i+2) / 2] = (short int)wi->left_side[(i+2) / 2];
+                        memcpy(&wi->buffer[i + 2], &wi->short_left[count], 2);
+                        count++;
+                }
+        }
+        if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->nb_samples * 4; i += 8){
+                        wi->short_left[i / 4] = (short int)wi->left_side[i / 4];
+                        memcpy(&wi->buffer[i], &wi->short_left[count], 2);
+                        count++;
+                        wi->short_left[(i+4) / 4] = (short int)wi->left_side[(i+4) / 4];
+                        memcpy(&wi->buffer[i + 4], &wi->short_left[count], 2);
+                        count++;
+                }
+                count = 0;
+                for(i = 0; i < wi->nb_samples * 4; i += 8){
+                        wi->short_right[i / 4] = (short int)wi->right_side[i / 4];
+                        memcpy(&wi->buffer[i + 2], &wi->short_right[count], 2);
+                        count++;
+                        wi->short_right[(i+4) / 4] = (short int)wi->right_side[(i+4) / 4];
+                        memcpy(&wi->buffer[i + 4], &wi->short_right[count], 2);
+                        count++;
+                }
+        }
+
+        bench_convert_double = wat_gettime() - bench_convert_double;
+        wat_log(LOG_PANIC, ", DONE.");
+
+        return 1;
+}
+#endif // UNROFIS
+
+
 #if defined(FISSION)
 int convert_double_to_short(WavInput *wi)
 {
@@ -1092,27 +1552,32 @@ int convert_double_to_short(WavInput *wi)
 
         wat_log(LOG_PANIC, ", short arrays allocated");
         int i;
-        bench_convert_double = wat_gettime();
 
         wat_log(LOG_PANIC, ", copying into buffer");
+        bench_convert_double = wat_gettime();
         int iterator = wi->wav_header->num_channels * 2;
         int count = 0;
         if(wi->wav_header->num_channels == 1){
-                for(i = 0; i < wi->nb_samples * iterator; i += iterator){
-                        wi->short_left[i/4] = (short int)wi->left_side[i/iterator];
+                for(i = 0; i < wi->nb_samples * 2; i += 2){
+                        wi->short_left[i / 2] = (short int)wi->left_side[i / 2];
                         memcpy(&wi->buffer[i], &wi->short_left[count], 2);
                         count++;
                 }
         }
         if(wi->wav_header->num_channels == 2){
-                for(i = 0; i < wi->nb_samples * iterator; i += iterator){
-                        wi->short_left[i/iterator] = (short int)wi->left_side[i/iterator];
-                        wi->short_right[i/iterator] = (short int)wi->right_side[i/iterator];
+                for(i = 0; i < wi->nb_samples * 4; i += 4){
+                        wi->short_left[i / 4] = (short int)wi->left_side[i / 4];
                         memcpy(&wi->buffer[i], &wi->short_left[count], 2);
+                        count++;
+                }
+                count = 0;
+                for(i = 0; i < wi->nb_samples * 4; i += 4){
+                        wi->short_right[i / 4] = (short int)wi->right_side[i / 4];
                         memcpy(&wi->buffer[i + 2], &wi->short_right[count], 2);
                         count++;
                 }
         }
+
         bench_convert_double = wat_gettime() - bench_convert_double;
         wat_log(LOG_PANIC, ", DONE.");
 
@@ -1204,7 +1669,7 @@ int save_file(WavInput *wi)
 }
 #endif //ORIG_B
 
-#if defined(OPT) //|| defined(FISSION)
+#if defined(OPT)
 int save_file(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nsave_file");
@@ -1234,13 +1699,13 @@ int save_file(WavInput *wi)
 
         bench_save_file = wat_gettime();
         if(wi->wav_header->num_channels == 1){
-                for(i = 0; i < wi->wav_header->subchunk2_size; i += wi->wav_header->num_channels){
+                for(i = 0; i < wi->wav_header->subchunk2_size; i += 1){
                         fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
                 }
 
         }
         else if(wi->wav_header->num_channels == 2){
-                for(i = 0; i < wi->wav_header->subchunk2_size; i += wi->wav_header->num_channels){
+                for(i = 0; i < wi->wav_header->subchunk2_size; i += 2){
                         fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
                         fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
                 }
@@ -1251,8 +1716,61 @@ int save_file(WavInput *wi)
         wat_log(LOG_PANIC, ", DONE");
         return 1;        
 }
+#endif // OPT
 
-#endif //OPT
+
+#if defined(UNROLL) || defined(UNROFIS)
+int save_file(WavInput *wi)
+{
+        wat_log(LOG_PANIC, "\nsave_file");
+
+        if(wi->wat_args->raise != 0){
+                raise_wav_file(wi);
+        }
+
+        char * msg = malloc(128 * sizeof(char));
+        FILE *f;
+
+        f = fopen(wi->output_file, "wb");
+        if(f == NULL){
+                sprintf(msg, "\nError while openning the output file: \"%s\".", 
+                                wi->output_file);
+                wat_log(LOG_INFO, msg);
+                return -1;
+        }
+
+        write_header(wi->wav_header, f);
+
+        convert_double_to_short(wi);
+
+        int i;
+
+        wat_log(LOG_PANIC, "\n, writing");
+
+        bench_save_file = wat_gettime();
+        if(wi->wav_header->num_channels == 1){
+                for(i = 0; i < wi->wav_header->subchunk2_size; i += 2){
+                        fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                        fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
+                }
+
+        }
+        else if(wi->wav_header->num_channels == 2){
+                for(i = 0; i < wi->wav_header->subchunk2_size; i += 2){
+                        fwrite(&wi->buffer[i], sizeof(unsigned char), 1, f);
+                        fwrite(&wi->buffer[i + 1], sizeof(unsigned char), 1, f);
+
+//                        fwrite(&wi->buffer[i + 2], sizeof(unsigned char), 1, f);
+//                        fwrite(&wi->buffer[i + 3], sizeof(unsigned char), 1, f);
+                }
+        }
+        bench_save_file = wat_gettime() - bench_save_file;
+
+        fclose(f);
+        wat_log(LOG_PANIC, ", DONE");
+        return 1;        
+}
+#endif //UNROLL
 
 #ifdef FISSION
 int save_file(WavInput *wi)
@@ -1582,6 +2100,16 @@ int main(int argc, char **argv)
         sprintf(bench_type, "OPT");
 #endif
 
+#ifdef UNROLL
+        sprintf(bench_type, "UNROLL");
+#endif
+        
+#ifdef UNROFIS
+        sprintf(bench_type, "UNROFIS");
+#endif
+
+
+
 #ifdef FISSION
         sprintf(bench_type, "FISSION");
 #endif
@@ -1680,9 +2208,7 @@ int main(int argc, char **argv)
                 bench_sum += bench_back_data;
                 bench_sum += bench_convert_double;
                 bench_sum += bench_save_file;
-                bench_sum += bench_fft;
 
-               
                 sprintf(msg, "\n\nbench_sum = %d", bench_sum);
                 wat_log(LOG_BENCH, msg);
 

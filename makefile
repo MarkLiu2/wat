@@ -48,15 +48,20 @@ $(OPT_OBJ): $(OPT_LIB)
 #==============================================================================#
 # OPTIMIZATIONS #
 
-opt:
+opt: $(LIB) $(OPT_OBJ) 
 	$(CC) -o $(PROGRAM) $(OPT_OBJ) $(LIB) $(CC_FLAGS) -D OPT  -D $(ARG)
 
+unroll: $(LIB) $(OPT_OBJ)  
+	$(CC) -o $(PROGRAM) $(OPT_OBJ) $(LIB) $(CC_FLAGS) -D UNROLL -D $(ARG)
 
-orig:
+unrofis: $(LIB) $(OPT_OBJ)  
+	$(CC) -o $(PROGRAM) $(OPT_OBJ) $(LIB) $(CC_FLAGS) -D UNROFIS -D $(ARG)
+
+orig: $(LIB) $(OPT_OBJ)  
 	$(CC) -o $(PROGRAM) $(OPT_OBJ) $(LIB) $(CC_FLAGS) -D ORIG_B -D $(ARG)
 
 
-fission:
+fission: $(LIB) $(OPT_OBJ)  
 	$(CC) -o $(PROGRAM) $(LIB) $(OPT_OBJ) $(CC_FLAGS) -D FISSION -D $(ARG)
 
 
