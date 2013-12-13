@@ -5,6 +5,7 @@
 
 int get_number_of_cores()
 {
+#ifdef __APPLE__
         int info[] = {CTL_HW, HW_AVAILCPU};
         size_t len = 4;
         uint32_t nb;
@@ -19,6 +20,9 @@ int get_number_of_cores()
         }
 
         return nb;
+#else
+        return 4;
+#endif
 }
 
 int write_header_raised(WavHeader *wh, FILE *f, int nb)

@@ -59,9 +59,9 @@ uint32_t original_fft(double data[], int nn, int isign)
                                 data[i] += tempr;
                                 data[i+1] += tempi;
                         }
+                }
                         wr = (wtemp = wr)*wpr - wi*wpi + wr;
                         wi = wi*wpr + wtemp*wpi + wi;
-                }
                 mmax = istep;
         }
         sample = wat_gettime() - sample; 

@@ -5,18 +5,11 @@
 
 #include "fft.h"
 #include "fft_original.c"
-#include "fft_fission.c"
 
+/* pick_fft isn't necessary anymore, was used during the optimization.
+ * will stay here, just in case 
+ */
 uint32_t pick_fft(double data[], int nn, int isign)
 {
-        /*
-#if defined(FISSION) || defined(OPT)
-        return fission_fft(data, nn, isign);
-#endif
-
-#if defined(ORIG) || defined(ORIG_B)
-        return original_fft(data, nn, isign);
-#endif
-*/
         return original_fft(data, nn, isign);
 }
