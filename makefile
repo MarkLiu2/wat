@@ -21,18 +21,11 @@ OBJ += utils.o
 OPT_OBJ += fft.o
 OPT_LIB += fft.c
 
-THREAD += -lpthread
-THREAD += -D
-THREAD += HAVE_THREADS
-
 .PHONY: $(PROGRAM)
 .PHONY: $(OPT_OBJ)
 
 $(PROGRAM): $(LIB) $(OPT_OBJ) 
 	$(CC) -o $(PROGRAM) $(LIB) $(OPT_OBJ) $(CC_FLAGS) -D ORIG
-
-thread: $(LIB) $(OPT_OBJ)
-	$(CC) -o $(PROGRAM) $(OBJ) $(LIB) $(CC_FLAGS) $(THREAD) -D ORIG 
 
 $(OPT_OBJ): $(OPT_LIB)
 	$(CC) -c $(OPT_LIB) -o $(OPT_OBJ) $(OPT_FLAGS) -D ORIG

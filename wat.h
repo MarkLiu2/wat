@@ -81,7 +81,6 @@ typedef struct Arguments{
         char **argv;
         int has_input;
         int has_output;
-        int benchmark;
         int fft;
         int n_times;
         int one_channel;
@@ -118,10 +117,6 @@ typedef struct WavInput{
         Arguments *wat_args;
         Factors *factors;
 
-#ifdef HAVE_THREADS
-        long nb_thread;
-#endif
-
 } WavInput;
 
 /* 
@@ -143,11 +138,6 @@ struct s_fft{
         int it_max;
         int num_channels;
         int this_channel;
-
-#ifdef HAVE_THREADS
-        int tid;
-#endif
-
 } s_fft;
 
 

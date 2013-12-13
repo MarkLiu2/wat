@@ -1,29 +1,5 @@
 #include "utils.h"
-#include <sys/param.h>
-#include <sys/sysctl.h>
 #include "wat.h"
-
-int get_number_of_cores()
-{
-#ifdef __APPLE__
-        int info[] = {CTL_HW, HW_AVAILCPU};
-        size_t len = 4;
-        uint32_t nb;
-
-        sysctl(info, 2, &nb, &len, NULL, 0);
-
-        if(nb < 1){
-                info[1] = HW_NCPU;
-                sysctl(info, 2, &nb, &len, NULL, 0);
-                if(nb < 1)
-                        nb = 1;
-        }
-
-        return nb;
-#else
-        return 4;
-#endif
-}
 
 int write_header_raised(WavHeader *wh, FILE *f, int nb)
 {

@@ -1,6 +1,21 @@
 A simple equalizer in C using FFT.
 
-The goal of this equalizer is apply loop transformations and threads to get more efficience.
-More information about how to compile or use it will be here soon. 
+The goal of this equalizer is apply loop transformations, such as loop 
+unrolling, loop unswitching, loop fission and loop fusion and improve the
+performance.
+
+To compile it, use:
+        $ make
+        or
+        $ make opt 
+
+Call "./wat help" or just ./wat to get help about parameters.
+
+This equalizer works only with wav files.
+The limitations are:
+        16 bits, only.
+        1 or 2 channels.
+
+The sample rate should not be a problem.
 
 snk

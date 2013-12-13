@@ -1,3 +1,8 @@
+/************************************************
+ * FFT code from the book Numerical Recipes in C *
+ * Visit www.nr.com for the licence.             *
+ ************************************************/
+
 #include "fft.h"
 #include <math.h>
 #include <stdlib.h>

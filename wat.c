@@ -7,12 +7,6 @@
 #include "benchmark.h"
 #include "utils.h"
 
-#ifdef HAVE_THREADS
-
-#include <pthread.h>
-
-#endif
-
 WavInput * wav_input = NULL;
 
 int bench_nb = 1;
@@ -45,8 +39,7 @@ void help()
         printf("\n\tWAT\n");
         printf("\n\thelp                 Help.");
         printf("\n\t-i <imput file>      Imput file.");
-        printf("\n\t-o <output file>     Imput file.");
-        printf("\n\t-b <int>             Run <int> times to benchmark.");
+        printf("\n\t-o <output file>     Output file.");
         printf("\n\t-fft                 Run FFT in input file.");
         printf("\n\t-times <int>         Run FFT <int> times");
         printf("\n\t-sec <int>           Run FFT only in <int> first seconds");
@@ -55,10 +48,7 @@ void help()
         printf("\n\t-eq <float>          Equalize audio with main factor <float>");
         printf("\n\t-one-channel         Will apply fft only in left channel");
         printf("\n\t-r <int>             Raise the size of wav file in <int> times");
-
-        printf("\n\n\tUsing threads");
-        printf("\n\tYou have to compile WAT using \"make thread\".\n");
-        printf("\n\t-nt <int>            Choose the number of threads is using it");
+        printf("\n\t-ph                  Print the header of wav file used as input.");
 
         printf("\n\n");
 }
@@ -118,17 +108,12 @@ int parse_args(WavInput *wi, int argc, char **argv)
         wi->wat_args->argv = argv;
         wi->wat_args->has_input = 0;
         wi->wat_args->has_output = 0;
-        wi->wat_args->benchmark = 0;
         wi->wat_args->fft = 0;
         wi->wat_args->n_times = 1;
         wi->wat_args->equalize = 0;
         wi->wat_args->one_channel = 0;
         wi->wat_args->raise = 0;
         wi->wat_args->print_header = 0;
-
-#ifdef HAVE_THREADS
-        wi->nb_thread = get_number_of_cores();
-#endif
 
         int i;
         for(i = 1; i < argc; i++){
@@ -147,11 +132,6 @@ int parse_args(WavInput *wi, int argc, char **argv)
                 else if(strcmp(argv[i], "-o") == 0){
                         wi->wat_args->has_output = 1;
                         wi->output_file = argv[i + 1];
-                        i++;
-                }
-                else if(strcmp(argv[i], "-b") == 0){
-                        wi->wat_args->benchmark = atoi(argv[i + 1]);
-                        bench_nb = atoi(argv[i + 1]);
                         i++;
                 }
                 else if(strcmp(argv[i], "-sec") == 0){
@@ -189,24 +169,6 @@ int parse_args(WavInput *wi, int argc, char **argv)
                 }
                 else if(strcmp(argv[i], "-log_level=BENCH") == 0){
                         set_log_level(LOG_BENCH);
-                }
-
-                else if(strcmp(argv[i], "-nt") == 0){
-#ifdef HAVE_THREADS
-                        wi->nb_thread = atol(argv[i + 1]);
-                        if(wi->nb_thread < 0){
-                                wat_log(LOG_INFO, "\n\nNumber of threads invalid\n\n");
-                                exit(1);
-                        }
-                        i++;
-#else 
-                        wat_log(LOG_BENCH, "Error on parameter \"-nt <int>\".\n"
-                                        "This options is only available if"
-                                        " WAT was compiled to use threads, and"
-                                        " wasn't.\n"
-                                        "You can use \"make thread\" for that.\n");
-                        return -1;
-#endif
                 }
                 else{
                         char msg[60];
@@ -1015,15 +977,6 @@ int channel_fft(struct s_fft *s)
         return 1;
 }
 
-#ifdef HAVE_THREADS
-        
-void * run_fft_t(void *st)
-{
-        channel_fft((struct s_fft *) st);
-        return NULL;
-}
-#endif
-
 struct s_fft* set_data(WavInput *wi)
 {
         wat_log(LOG_PANIC, "\nset_data(struct s_fft)");
@@ -1050,85 +1003,6 @@ int run_fft(WavInput *wi, float seconds)
         wat_log(LOG_PANIC, "\nrun_fft");
         int i;
         int sec = floor(seconds);
-
-#ifdef HAVE_THREADS
-
-        wat_log(LOG_PANIC, "\n with threads");
-
-        if(wi->nb_thread > sec){
-                wi->nb_thread = sec;
-                wat_log(LOG_INFO, "\nNumber of threads is more than a number of seconds\n");
-        }
-        pthread_t *fft_thread;
-
-        /* if nb_thread is odd will be added 1 */
-        wi->nb_thread += ((wi->nb_thread & 1) == 1);
-
-        fft_thread = (pthread_t *)malloc(wi->nb_thread * sizeof(pthread_t));
-
-        struct s_fft **st_t = (struct s_fft **)malloc(
-                        wi->nb_thread * sizeof(struct s_fft *));
-
-        for(i = 0; i < wi->nb_thread; i++)
-        {
-                st_t[i] = set_data(wi);
-                st_t[i]->tid = i;
-        }
-
-        fix_data_to_fft(wi);
-
-        int sec_done = 0;
-        int k;
-
-        while(sec_done < sec){
-                for(k = 0; k < wi->nb_thread; k++){
-                        sprintf(st_t[k]->log, "\nTHREAD %d running FFT %d of %d seconds,"
-                                        " in Channel 1, in %d to %d", 
-                                        k,
-                                        sec_done, 
-                                        sec, 
-                                        k * st_t[k]->freq, 
-                                        k * st_t[k]->freq + st_t[k]->freq);
-                        wat_log(LOG_PANIC, st_t[k]->log);
-
-
-                        st_t[k]->it = sec_done;
-                        st_t[k]->channel = wi->left_fixed;
-
-                        pthread_create(&fft_thread[k], NULL, run_fft_t, st_t[k]);
-
-                        if(wi->wav_header->num_channels == 2 && wi->wat_args->one_channel == 0){
-
-                                k++;
-
-                                sprintf(st_t[k]->log, "\nTHREAD FFT %d running %d of %d seconds,"
-                                                " in Channel 2, in %d to %d", 
-                                                k,
-                                                sec_done, 
-                                                sec, 
-                                                k * st_t[k]->freq, 
-                                                k * st_t[k]->freq + st_t[k]->freq);
-                                wat_log(LOG_PANIC, st_t[k]->log);
-
-                                st_t[k]->it = sec_done;
-                                st_t[k]->channel = wi->right_fixed;
-
-                                pthread_create(&fft_thread[k], NULL, run_fft_t, st_t[k]);
-                        }
-
-                        sec_done++;
-                        if(sec_done >= sec)
-                                break;
-                }
-
-                for(k = 0; k < wi->nb_thread; k++){
-                        pthread_join(fft_thread[k], NULL);
-                }
-        }
-        back_data_to_normal(wi);
-        return 1;
-
-#else //HAVE_THREADS
 
         struct s_fft *s = set_data(wi);
 
@@ -1190,7 +1064,6 @@ int run_fft(WavInput *wi, float seconds)
         back_data_to_normal(wi);
         wat_log(LOG_PANIC, "\nrun_fft, DONE.");
         return 1;
-#endif //HAVE_THREADS
 }
 
 /* END FFT -------------------------------------------------------------------- */
